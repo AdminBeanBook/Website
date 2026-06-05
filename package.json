@@ -1,0 +1,44 @@
+{
+  "name": "bean-book-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "dotenv -e .env.local -- prisma db push",
+    "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "import-orders": "dotenv -e .env.local -- tsx scripts/import-orders.ts",
+    "db:setup": "dotenv -e .env.local -- prisma db push && dotenv -e .env.local -- tsx prisma/seed.ts",
+    "db:studio": "dotenv -e .env.local -- prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.0.11",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^6.12.4",
+    "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "^15.1.0",
+    "postcss": "^8",
+    "prisma": "^6.9.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Default Bean Book palette (overridden by SiteThemeStyles when loaded) */
+    --bb-green: #1e3a3a;
+    --bb-header: #2d3e40;
+    --bb-beige: #d9cbb7;
+    --bb-cream: #e5d8c1;
+    --bb-accent: #c47a3a;
+    --bb-text: #2d3e40;
+    --bb-text-heading: #2d3e40;
+    --bb-text-body: #2d3e40;
+    --bb-text-muted: #2d3e40;
+    --bb-text-link: #c47a3a;
+    --bb-green-rgb: 30 58 58;
+    --bb-header-rgb: 45 62 64;
+    --bb-beige-rgb: 217 203 183;
+    --bb-cream-rgb: 229 216 193;
+    --bb-accent-rgb: 196 122 58;
+    --bb-text-rgb: 45 62 64;
+    --bb-text-heading-rgb: 45 62 64;
+    --bb-text-body-rgb: 45 62 64;
+    --bb-text-muted-rgb: 45 62 64;
+    --bb-text-link-rgb: 196 122 58;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-brand-text-body antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-block bg-white px-8 py-3 text-sm font-medium uppercase tracking-wide text-brand-text-body transition hover:bg-brand-cream;
+  }
+
+  .btn-outline {
+    @apply inline-block border border-brand-green px-6 py-2 text-sm font-medium text-brand-text-body transition hover:bg-brand-green hover:text-white;
+  }
+
+  .page-heading {
+    @apply text-center text-3xl font-light tracking-wide text-brand-text-heading md:text-4xl;
+  }
+
+  .prose-bb {
+    @apply mx-auto max-w-3xl space-y-4 text-base leading-relaxed text-brand-text-body/90;
+  }
+}

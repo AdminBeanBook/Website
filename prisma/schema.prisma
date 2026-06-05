@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model EmailSettings {
+  id         String   @id @default("default")
+  sendersJson String
+  updatedAt  DateTime @updatedAt
+}
+
+model Contact {
+  id        String       @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  active    Boolean      @default(true)
+  tags      ContactTag[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ContactTag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  color     String    @default("#226932")
+  contacts  Contact[]
+  createdAt DateTime  @default(now())
+}
+
+model SentEmailBatch {
+  id             String   @id @default(cuid())
+  subject        String
+  senderKey      String
+  audience       String
+  htmlBody       String
+  recipientCount Int
+  successCount   Int      @default(0)
+  failureCount   Int      @default(0)
+  sentByEmail    String
+  createdAt      DateTime @default(now())
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String   @default("")
+  htmlBody  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id
+  name        String
+  description String   @default("")
+  priceCents  Int
+  imageUrl    String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PackagePreset {
+  id        String   @id @default(cuid())
+  name      String
+  lengthIn  Float
+  widthIn   Float
+  heightIn  Float
+  weightOz  Float
+  isDefault Boolean  @default(false)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  stripeSessionId String   @unique
+  stripeInvoiceId String?  @unique
+  invoiceHostedUrl String?
+  invoiceSentAt   DateTime?
+  status          String   @default("paid")
+  amountCents     Int
+  discountCents   Int      @default(0)
+  discountCode    String?
+  productId       String?
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  customerEmail   String
+  customerName    String?
+  customerPhone   String?
+  shippingName    String?
+  shippingLine1   String?
+  shippingLine2   String?
+  shippingCity    String?
+  shippingState   String?
+  shippingPostal  String?
+  shippingCountry String?  @default("US")
+  packagePresetId   String?
+  packagePreset     PackagePreset? @relation(fields: [packagePresetId], references: [id])
+  shippoShipmentId   String?
+  shippoTransactionId String?
+  carrier            String?
+  carrierService     String?
+  trackingNumber     String?
+  labelUrl           String?
+  labelCostCents     Int?
+  shippedAt          DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DiscountCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  type      String
+  value     Int
+  active    Boolean   @default(true)
+  maxUses   Int?
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PageContent {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  path           String?   @unique
+  template       String    @default("content")
+  enabled        Boolean   @default(true)
+  showInNav      Boolean   @default(false)
+  sortOrder      Int       @default(0)
+  isSystem       Boolean   @default(false)
+  title          String
+  subtitle       String?
+  body           String    @default("")
+  placedImages   String    @default("[]")
+  textColors     String?
+  publishedAt    DateTime  @default(now())
+  draftTitle     String?
+  draftSubtitle  String?
+  draftBody      String?
+  draftPlacedImages String?
+  draftTextColors String?
+  draftPath      String?
+  draftTemplate  String?
+  draftEnabled   Boolean?
+  draftShowInNav Boolean?
+  draftUpdatedAt DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+model SiteSettings {
+  id              String   @id @default("default")
+  publishedConfig String
+  draftConfig     String
+  publishedAt     DateTime @default(now())
+  draftUpdatedAt  DateTime?
+  updatedAt       DateTime @updatedAt
+}
+
+model CoffeeShop {
+  id            String   @id @default(cuid())
+  name          String
+  website       String   @default("")
+  locationLabel String   @default("Location")
+  locationsJson String
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

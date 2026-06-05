@@ -1,0 +1,54 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import { SiteButton } from "@/components/SiteButton";
+import { useSiteConfig } from "@/components/SiteConfigProvider";
+import {
+  getButtonPagePosition,
+  getFreeButtonsForPage,
+  pathnameToPageSlug,
+} from "@/lib/site-config/free-buttons";
+
+type PageFreeButtonsProps = {
+  showDiscountField?: boolean;
+};
+
+export function PageFreeButtons({ showDiscountField }: PageFreeButtonsProps) {
+  const pathname = usePathname();
+  const config = useSiteConfig();
+  const pageSlug = pathnameToPageSlug(pathname);
+  const buttons = getFreeButtonsForPage(config, pageSlug);
+
+  if (buttons.length === 0) return null;
+
+  const discount =
+    showDiscountField ?? pageSlug === "purchase";
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-30"
+      aria-hidden={false}
+    >
+      {buttons.map((button) => {
+        const pos = getButtonPagePosition(button, pageSlug);
+        if (!pos) return null;
+        return (
+          <div
+            key={button.id}
+            className="pointer-events-auto absolute"
+            style={{
+              left: `${pos.x}%`,
+              top: `${pos.y}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <SiteButton
+              button={button}
+              showDiscountField={discount && button.action === "checkout"}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
