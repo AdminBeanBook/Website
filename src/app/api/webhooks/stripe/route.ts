@@ -5,6 +5,7 @@ import {
   resolveOrderIdFromInvoice,
 } from "@/lib/orders/invoice";
 import { saveOrderFromStripeSession } from "@/lib/orders";
+import { captureServerError } from "@/lib/sentry/capture";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -37,39 +38,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      await saveOrderFromStripeSession(session);
-      break;
-    }
-    case "checkout.session.expired": {
-      console.info("Checkout expired:", event.data.object.id);
-      break;
-    }
-    case "invoice.paid": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const orderId = await resolveOrderIdFromInvoice({
-        id: invoice.id,
-        metadata: invoice.metadata ?? null,
-      });
-      if (!orderId) {
-        console.warn(`invoice.paid: no matching order for ${invoice.id}`);
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await saveOrderFromStripeSession(session);
         break;
       }
-      const updated = await markOrderPaidFromInvoice(orderId, invoice.id, {
-        status: invoice.status,
-        amount_paid: invoice.amount_paid,
-      });
-      if (updated) {
-        console.info(
-          `invoice.paid: order ${orderId} → ${updated.status} ($${((invoice.amount_paid ?? 0) / 100).toFixed(2)})`,
-        );
+      case "checkout.session.expired": {
+        console.info("Checkout expired:", event.data.object.id);
+        break;
       }
-      break;
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const orderId = await resolveOrderIdFromInvoice({
+          id: invoice.id,
+          metadata: invoice.metadata ?? null,
+        });
+        if (!orderId) {
+          console.warn(`invoice.paid: no matching order for ${invoice.id}`);
+          break;
+        }
+        const updated = await markOrderPaidFromInvoice(orderId, invoice.id, {
+          status: invoice.status,
+          amount_paid: invoice.amount_paid,
+        });
+        if (updated) {
+          console.info(
+            `invoice.paid: order ${orderId} → ${updated.status} ($${((invoice.amount_paid ?? 0) / 100).toFixed(2)})`,
+          );
+        }
+        break;
+      }
+      default:
+        break;
     }
-    default:
-      break;
+  } catch (err) {
+    captureServerError(err, {
+      tags: { area: "stripe-webhook", event: event.type },
+      extra: { eventId: event.id },
+    });
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

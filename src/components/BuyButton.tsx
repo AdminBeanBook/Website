@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackPlausibleEvent } from "@/lib/analytics/plausible";
 
 type BuyButtonProps = {
   label?: string;
@@ -35,6 +36,7 @@ export function BuyButton({
         throw new Error(data.error ?? "Could not start checkout");
       }
 
+      trackPlausibleEvent("Checkout Started");
       window.location.href = data.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");

@@ -18,6 +18,9 @@
 # production
 /build
 
+# local reference (not for GitHub)
+TECH_STACK.md
+
 # misc
 .DS_Store
 *.pem

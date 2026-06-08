@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { validateDiscountCode } from "@/lib/discounts";
 import { BEAN_BOOK_2026 } from "@/lib/products";
+import { captureServerError } from "@/lib/sentry/capture";
 import { getSiteOrigin, getStripe } from "@/lib/stripe";
 
 export async function POST(request: Request) {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error("Checkout session error:", err);
+    captureServerError(err, { tags: { area: "checkout" } });
     const message =
       err instanceof Error ? err.message : "Checkout failed";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CheckoutSuccessTracker } from "@/components/analytics/CheckoutSuccessTracker";
 import { PageHero } from "@/components/PageHero";
+import { captureServerError } from "@/lib/sentry/capture";
 import { syncOrderFromCheckoutSession } from "@/lib/sync-order";
 
 export const metadata: Metadata = {
@@ -20,12 +22,16 @@ export default async function CheckoutSuccessPage({
     try {
       await syncOrderFromCheckoutSession(sessionId);
     } catch (err) {
-      console.error("Failed to sync order on success page:", err);
+      captureServerError(err, {
+        tags: { area: "checkout-success" },
+        extra: { sessionId },
+      });
     }
   }
 
   return (
     <>
+      <CheckoutSuccessTracker sessionId={sessionId} />
       <PageHero
         title="Thank you!"
         subtitle="Your Bean Book order is confirmed. We'll send a receipt to your email and ship your passbook soon."

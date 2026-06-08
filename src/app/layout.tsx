@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
+import { PlausibleScript } from "@/components/analytics/PlausibleScript";
 import { SiteLayoutWrapper } from "@/components/SiteLayoutWrapper";
 import { SiteShell } from "@/components/SiteShell";
 import { SITE } from "@/lib/site";
@@ -38,6 +39,7 @@ export default function RootLayout({
         <SiteLayoutWrapper variant="published">
           <SiteShell>{children}</SiteShell>
         </SiteLayoutWrapper>
+        <PlausibleScript />
       </body>
     </html>
   );
