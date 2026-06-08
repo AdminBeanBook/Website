@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { incrementDiscountUsage } from "@/lib/discounts";
+import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
 
 export async function saveOrderFromStripeSession(
   session: Stripe.Checkout.Session,
@@ -64,6 +65,8 @@ export async function saveOrderFromStripeSession(
       console.error("Failed to increment discount usage:", err);
     }
   }
+
+  void notifyNewOrderEmail(order);
 
   return order;
 }

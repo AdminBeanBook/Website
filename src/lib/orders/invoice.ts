@@ -1,5 +1,6 @@
 import type { Order } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
 import { BEAN_BOOK_2026 } from "@/lib/products";
 import { getStripe } from "@/lib/stripe";
 import { isUnpaid, normalizeOrderStatus } from "@/lib/orders/status";
@@ -138,13 +139,17 @@ export async function markOrderPaidFromInvoice(
 
   const nextStatus = order.labelUrl ? "archived" : "paid";
 
-  return prisma.order.update({
+  const updated = await prisma.order.update({
     where: { id: orderId },
     data: {
       status: nextStatus,
       stripeInvoiceId,
     },
   });
+
+  void notifyNewOrderEmail(updated);
+
+  return updated;
 }
 
 /** Resolve Bean Book order id from a paid Stripe invoice. */
