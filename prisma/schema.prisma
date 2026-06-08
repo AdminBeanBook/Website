@@ -36,12 +36,13 @@ model Contact {
 }
 
 model ContactTag {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  slug      String    @unique
-  color     String    @default("#226932")
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  color     String     @default("#226932")
   contacts  Contact[]
-  createdAt DateTime  @default(now())
+  customers Customer[]
+  createdAt DateTime   @default(now())
 }
 
 model SentEmailBatch {
@@ -67,13 +68,15 @@ model EmailTemplate {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String       @id @default(cuid())
+  email     String       @unique
   name      String?
   phone     String?
+  notes     String?
+  tags      ContactTag[]
   orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
 model Product {
