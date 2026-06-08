@@ -64,8 +64,8 @@ const SLOT_DEFAULT_POSITIONS: Record<
   Record<string, PageButtonPosition>
 > = {
   home: {
-    "home-hero": { x: 50, y: 28 },
-    "home-content": { x: 50, y: 52 },
+    "home-hero": { x: 50, y: 62 },
+    "home-content": { x: 50, y: 72 },
   },
   purchase: {
     purchase: { x: 50, y: 58 },
@@ -109,10 +109,36 @@ export function migrateButtonPositions(
   };
 }
 
+/** Legacy defaults overlapped the hero title or sat under the white section. */
+function nudgeLegacyHomeButtonPositions(
+  buttons: SiteButtonConfig[],
+): SiteButtonConfig[] {
+  const nudges: Record<
+    string,
+    { from: PageButtonPosition; to: PageButtonPosition }
+  > = {
+    "btn-home-hero": { from: { x: 50, y: 28 }, to: { x: 50, y: 62 } },
+    "btn-home-learn": { from: { x: 50, y: 52 }, to: { x: 50, y: 72 } },
+  };
+
+  return buttons.map((button) => {
+    const nudge = nudges[button.id];
+    const home = button.pagePositions?.home;
+    if (!nudge || !home) return button;
+    if (home.x !== nudge.from.x || home.y !== nudge.from.y) return button;
+    return {
+      ...button,
+      pagePositions: { ...button.pagePositions, home: nudge.to },
+    };
+  });
+}
+
 export function migrateSiteConfigButtons(config: SiteConfig): SiteConfig {
   return {
     ...config,
-    buttons: config.buttons.map(migrateButtonPositions),
+    buttons: nudgeLegacyHomeButtonPositions(
+      config.buttons.map(migrateButtonPositions),
+    ),
   };
 }
 

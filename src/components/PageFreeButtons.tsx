@@ -26,7 +26,7 @@ export function PageFreeButtons({ showDiscountField }: PageFreeButtonsProps) {
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-30"
+      className="pointer-events-none absolute inset-0 z-50"
       aria-hidden={false}
     >
       {buttons.map((button) => {

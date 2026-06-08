@@ -42,7 +42,7 @@ export function HomePageView({ page, textColors }: HomePageViewProps) {
         </div>
       </section>
 
-      <section className="relative z-40 bg-white px-6 py-16 md:py-24">
+      <section className="relative bg-white px-6 py-16 md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h2
             className="page-heading whitespace-pre-line"

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     if (slug) {
       const page = await publishPage(slug);
       await publishSiteConfig();
+      revalidatePath("/", "layout");
       return NextResponse.json({
         published: 1,
         page: {
@@ -31,6 +33,7 @@ export async function POST(request: Request) {
 
     const count = await publishAllPages();
     await publishSiteConfig();
+    revalidatePath("/", "layout");
     return NextResponse.json({ published: count });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Publish failed";

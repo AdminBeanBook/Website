@@ -30,7 +30,7 @@ export function PagePlacedImages() {
   if (images.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-40" aria-hidden={false}>
+    <div className="pointer-events-none absolute inset-0 z-20" aria-hidden={false}>
       {images.map((img) => (
         <div
           key={img.id}

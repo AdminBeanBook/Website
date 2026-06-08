@@ -5,6 +5,9 @@ import { SiteShell } from "@/components/SiteShell";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
+/** CMS content comes from the database — do not bake pages at deploy time. */
+export const dynamic = "force-dynamic";
+
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-sans",

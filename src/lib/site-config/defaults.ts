@@ -83,7 +83,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
       style: "primary",
       action: "link",
       placement: [],
-      pagePositions: { home: { x: 50, y: 28 } },
+      pagePositions: { home: { x: 50, y: 62 } },
       enabled: true,
     },
     {
@@ -93,7 +93,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
       style: "outline",
       action: "link",
       placement: [],
-      pagePositions: { home: { x: 50, y: 52 } },
+      pagePositions: { home: { x: 50, y: 72 } },
       enabled: true,
     },
     {
