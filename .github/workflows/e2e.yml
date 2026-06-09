@@ -1,0 +1,96 @@
+name: E2E tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    name: Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: beanbook
+          POSTGRES_PASSWORD: beanbook
+          POSTGRES_DB: beanbook_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U beanbook -d beanbook_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      CI: true
+      DATABASE_URL: postgresql://beanbook:beanbook@localhost:5432/beanbook_e2e
+      DIRECT_URL: postgresql://beanbook:beanbook@localhost:5432/beanbook_e2e
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      AUTH_SECRET: ci-e2e-auth-secret-minimum-32-characters-long
+      ADMIN_EMAIL: ci-admin@thebeanbook.org
+      ADMIN_PASSWORD: ci-e2e-admin-password
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare database
+        run: npx prisma generate && npx prisma db push && npx tsx prisma/seed.ts
+
+      - name: Verify required secrets
+        run: |
+          if [ -z "$STRIPE_SECRET_KEY" ]; then
+            echo "::error::Add STRIPE_SECRET_KEY (sk_test_...) to GitHub repository secrets."
+            exit 1
+          fi
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      - name: Email failure notification
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CI_NOTIFY_EMAIL: ${{ secrets.CI_NOTIFY_EMAIL }}
+          CI_NOTIFY_FROM: ${{ secrets.CI_NOTIFY_FROM }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: node scripts/notify-ci-failure.mjs

@@ -80,6 +80,49 @@ Use a **live** Shippo token only in production.
 
 **Admin → Packages** lets you create mailer/box presets (dimensions in inches, weight in oz). On **Orders**, pick a package before **Get shipping rates** → **Buy label**. The first seed run creates a default “Bean Book bubble mailer” preset.
 
+## End-to-end tests (Playwright)
+
+Playwright automates the real buyer journey: browse the shop → **Buy Now** → pay on Stripe (test card) → **Thank you!** success page.
+
+**Prerequisites** (in `.env.local`):
+
+- `STRIPE_SECRET_KEY=sk_test_...`
+- `NEXT_PUBLIC_SITE_URL=http://localhost:3000`
+- `DATABASE_URL` (orders are saved on the success page even without webhooks)
+
+For admin order verification via webhook, also run in a second terminal:
+
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Copy the printed `whsec_...` into `STRIPE_WEBHOOK_SECRET` and restart the dev server.
+
+**Run tests:**
+
+```bash
+npm run test:e2e          # all E2E tests
+npm run test:e2e:purchase # full buy flow only
+npm run test:e2e:ui       # interactive debugger
+```
+
+Browse-only tests run without Stripe. Full purchase tests are skipped unless `STRIPE_SECRET_KEY` is a test key (`sk_test_...`).
+
+### GitHub Actions (CI)
+
+E2E tests run automatically on pushes and pull requests to `main` via [`.github/workflows/e2e.yml`](./.github/workflows/e2e.yml).
+
+Add these **repository secrets** in GitHub → Settings → Secrets and variables → Actions:
+
+| Secret | Purpose |
+|--------|---------|
+| `STRIPE_SECRET_KEY` | Stripe **test** secret key (`sk_test_...`) for checkout E2E |
+| `RESEND_API_KEY` | Resend API key for failure alert emails |
+| `CI_NOTIFY_EMAIL` | Your email address (where CI failure alerts go) |
+| `CI_NOTIFY_FROM` | Verified Resend sender, e.g. `Bean Book CI <admin@thebeanbook.org>` |
+
+When E2E tests fail, GitHub uploads a Playwright report artifact and sends you an email with a link to the failed run.
+
 ## Development
 
 ```bash

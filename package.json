@@ -12,7 +12,10 @@
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "import-orders": "dotenv -e .env.local -- tsx scripts/import-orders.ts",
     "db:setup": "dotenv -e .env.local -- prisma db push && dotenv -e .env.local -- tsx prisma/seed.ts",
-    "db:studio": "dotenv -e .env.local -- prisma studio"
+    "db:studio": "dotenv -e .env.local -- prisma studio",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:purchase": "playwright test e2e/purchase.spec.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -29,10 +32,12 @@
     "stripe": "^17.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "^15.1.0",
