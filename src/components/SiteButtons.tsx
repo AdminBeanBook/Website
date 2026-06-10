@@ -9,14 +9,12 @@ import { pathnameToPageSlug } from "@/lib/site-config/free-buttons";
 type SiteButtonsProps = {
   placement: string;
   className?: string;
-  showDiscountField?: boolean;
   wrapperClassName?: string;
 };
 
 export function SiteButtons({
   placement,
   className,
-  showDiscountField,
   wrapperClassName,
 }: SiteButtonsProps) {
   const config = useSiteConfig();
@@ -32,7 +30,6 @@ export function SiteButtons({
           key={button.id}
           button={button}
           className={className}
-          showDiscountField={showDiscountField && button.action === "checkout"}
         />
       ))}
     </div>

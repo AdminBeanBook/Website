@@ -7,24 +7,15 @@ import type { SiteButtonConfig } from "@/lib/site-config/types";
 type SiteButtonProps = {
   button: SiteButtonConfig;
   className?: string;
-  showDiscountField?: boolean;
 };
 
-export function SiteButton({
-  button,
-  className,
-  showDiscountField = false,
-}: SiteButtonProps) {
+export function SiteButton({ button, className }: SiteButtonProps) {
   const styleClass =
     button.style === "outline" ? "btn-outline" : "btn-primary";
 
   if (button.action === "checkout") {
     return (
-      <BuyButton
-        label={button.label}
-        className={className ?? styleClass}
-        showDiscountField={showDiscountField}
-      />
+      <BuyButton label={button.label} className={className ?? styleClass} />
     );
   }
 

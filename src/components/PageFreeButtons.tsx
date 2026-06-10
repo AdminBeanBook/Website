@@ -9,20 +9,13 @@ import {
   pathnameToPageSlug,
 } from "@/lib/site-config/free-buttons";
 
-type PageFreeButtonsProps = {
-  showDiscountField?: boolean;
-};
-
-export function PageFreeButtons({ showDiscountField }: PageFreeButtonsProps) {
+export function PageFreeButtons() {
   const pathname = usePathname();
   const config = useSiteConfig();
   const pageSlug = pathnameToPageSlug(pathname);
   const buttons = getFreeButtonsForPage(config, pageSlug);
 
   if (buttons.length === 0) return null;
-
-  const discount =
-    showDiscountField ?? pageSlug === "purchase";
 
   return (
     <div
@@ -42,10 +35,7 @@ export function PageFreeButtons({ showDiscountField }: PageFreeButtonsProps) {
               transform: "translate(-50%, -50%)",
             }}
           >
-            <SiteButton
-              button={button}
-              showDiscountField={discount && button.action === "checkout"}
-            />
+            <SiteButton button={button} />
           </div>
         );
       })}

@@ -142,15 +142,17 @@ model Order {
 }
 
 model DiscountCode {
-  id        String    @id @default(cuid())
-  code      String    @unique
-  type      String
-  value     Int
-  active    Boolean   @default(true)
-  maxUses   Int?
-  usedCount Int       @default(0)
-  expiresAt DateTime?
-  createdAt DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  code                  String    @unique
+  type                  String
+  value                 Int
+  active                Boolean   @default(true)
+  maxUses               Int?
+  usedCount             Int       @default(0)
+  expiresAt             DateTime?
+  stripeCouponId        String?
+  stripePromotionCodeId String?
+  createdAt             DateTime  @default(now())
 }
 
 model PageContent {

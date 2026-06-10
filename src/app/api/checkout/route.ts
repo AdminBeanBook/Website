@@ -1,53 +1,27 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { validateDiscountCode } from "@/lib/discounts";
 import { BEAN_BOOK_2026 } from "@/lib/products";
 import { captureServerError } from "@/lib/sentry/capture";
 import { getSiteOrigin, getStripe } from "@/lib/stripe";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const stripe = getStripe();
     const origin = getSiteOrigin();
     const shippingCents = Number(process.env.SHIPPING_AMOUNT_CENTS ?? "0");
 
-    let discountCode: string | undefined;
-    try {
-      const body = (await request.json()) as { discountCode?: string };
-      discountCode = body.discountCode;
-    } catch {
-      discountCode = undefined;
-    }
-
-    const subtotalCents = BEAN_BOOK_2026.priceCents;
-    let discountCents = 0;
-    let appliedCode: string | null = null;
-
-    if (discountCode?.trim()) {
-      const result = await validateDiscountCode(discountCode, subtotalCents);
-      if (!result.valid) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
-      }
-      discountCents = result.discountCents;
-      appliedCode = result.code;
-    }
-
-    const unitAmount = Math.max(50, subtotalCents - discountCents);
-
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      !appliedCode && process.env.STRIPE_PRICE_ID
+      process.env.STRIPE_PRICE_ID
         ? [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }]
         : [
             {
               quantity: 1,
               price_data: {
                 currency: BEAN_BOOK_2026.currency,
-                unit_amount: unitAmount,
+                unit_amount: BEAN_BOOK_2026.priceCents,
                 product_data: {
                   name: BEAN_BOOK_2026.name,
-                  description: appliedCode
-                    ? `${BEAN_BOOK_2026.description} (Discount: ${appliedCode})`
-                    : BEAN_BOOK_2026.description,
+                  description: BEAN_BOOK_2026.description,
                   images: [BEAN_BOOK_2026.imageUrl],
                 },
               },
@@ -57,6 +31,7 @@ export async function POST(request: Request) {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       line_items: lineItems,
+      allow_promotion_codes: true,
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/cancel`,
       shipping_address_collection: {
@@ -67,8 +42,6 @@ export async function POST(request: Request) {
       },
       metadata: {
         product_id: BEAN_BOOK_2026.id,
-        discount_code: appliedCode ?? "",
-        discount_cents: String(discountCents),
       },
     };
 

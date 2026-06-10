@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { syncDiscountToStripe } from "@/lib/stripe-discounts";
 
 export async function GET() {
   const admin = await requireAdminSession();
@@ -11,7 +12,14 @@ export async function GET() {
   const codes = await prisma.discountCode.findMany({
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json(codes);
+
+  const synced = await Promise.all(
+    codes.map((code) =>
+      code.stripePromotionCodeId ? code : syncDiscountToStripe(code),
+    ),
+  );
+
+  return NextResponse.json(synced);
 }
 
 export async function POST(request: Request) {
@@ -49,5 +57,6 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json(record);
+  const synced = await syncDiscountToStripe(record);
+  return NextResponse.json(synced);
 }
