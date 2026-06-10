@@ -1,6 +1,7 @@
 import type { ResolvedPageContent } from "@/lib/pages";
 import { buildPageTextColorsContext } from "@/lib/pages/text-colors";
 import { listCoffeeShops } from "@/lib/coffee-shops";
+import { getGoogleMapEmbedUrl } from "@/lib/google-map";
 import { getSiteConfig, type SiteConfigVariant } from "@/lib/site-config";
 import { ContactPageView } from "@/components/pages/ContactPageView";
 import { ContentPageView } from "@/components/pages/ContentPageView";
@@ -35,7 +36,14 @@ export async function PageViewByTemplate({
       return <ContactPageView page={page} textColors={textColors} />;
     case "map": {
       const shops = await listCoffeeShops({ activeOnly: true });
-      return <MapPageView page={page} shops={shops} textColors={textColors} />;
+      return (
+        <MapPageView
+          page={page}
+          shops={shops}
+          textColors={textColors}
+          mapEmbedUrl={getGoogleMapEmbedUrl()}
+        />
+      );
     }
     case "learn-more":
       return <LearnMorePageView page={page} textColors={textColors} />;

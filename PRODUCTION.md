@@ -27,8 +27,11 @@ In [Stripe Dashboard](https://dashboard.stripe.com) switch to **Live** mode (tog
 |----------|-----------------|
 | `STRIPE_SECRET_KEY` | Developers → API keys → **Secret key** (`sk_live_...`) |
 | `NEXT_PUBLIC_SITE_URL` | Your live site, e.g. `https://thebeanbook.org` (no trailing slash) |
+| `GOOGLE_MAP_EMBED_URL` | Google My Maps embed iframe `src` (Map page). Copy from `.env.local`. |
 
-Add both in **Vercel → Project → Settings → Environment Variables** for Production.
+Add these in **Vercel → Project → Settings → Environment Variables** for Production.
+
+> `.env.local` is only on your laptop — it is **not** deployed. The live site needs the same values in Vercel.
 
 ## 3. Stripe webhook (auto “paid” orders)
 

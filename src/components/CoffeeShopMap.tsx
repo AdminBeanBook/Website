@@ -10,10 +10,12 @@ export function CoffeeShopMap({ embedUrl }: CoffeeShopMapProps) {
       <div className="mx-auto max-w-3xl rounded-lg border border-dashed border-brand-green/30 bg-brand-cream/50 px-6 py-10 text-center text-sm text-brand-text/80">
         <p className="font-medium text-brand-text">Map not configured yet</p>
         <p className="mt-2">
-          Add your Google My Maps embed URL to{" "}
-          <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAP_EMBED_URL</code> in{" "}
-          <code className="text-xs">.env.local</code>, then restart the dev
-          server.
+          Add your Google My Maps embed URL as{" "}
+          <code className="text-xs">GOOGLE_MAP_EMBED_URL</code> (or{" "}
+          <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAP_EMBED_URL</code>) in{" "}
+          <code className="text-xs">.env.local</code> for local dev, and in{" "}
+          <strong>Vercel → Settings → Environment Variables</strong> for the live
+          site.
         </p>
         <p className="mt-2 text-xs">
           In Google Maps: open your map → Share → Embed a map → copy the{" "}

@@ -1,5 +1,6 @@
 import { MapPageView } from "@/components/pages/MapPageView";
 import { listCoffeeShops } from "@/lib/coffee-shops";
+import { getGoogleMapEmbedUrl } from "@/lib/google-map";
 import { getPageContent } from "@/lib/pages";
 import { buildPageTextColorsContext } from "@/lib/pages/text-colors";
 import { getSiteConfig } from "@/lib/site-config";
@@ -16,5 +17,12 @@ export default async function PreviewMapPage() {
     page.textColorOverrides,
     site.colors.text,
   );
-  return <MapPageView page={page} shops={shops} textColors={textColors} />;
+  return (
+    <MapPageView
+      page={page}
+      shops={shops}
+      textColors={textColors}
+      mapEmbedUrl={getGoogleMapEmbedUrl()}
+    />
+  );
 }

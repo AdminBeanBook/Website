@@ -8,13 +8,12 @@ import {
   type PageTextColorsContext,
 } from "@/lib/pages/text-colors";
 
-const MAP_EMBED_URL = process.env.NEXT_PUBLIC_GOOGLE_MAP_EMBED_URL;
-
 type MapPageViewProps = {
   page: ResolvedPageContent;
   shops: CoffeeShopRow[];
   textColors: PageTextColorsContext;
   searchQuery?: string;
+  mapEmbedUrl?: string | null;
 };
 
 export function MapPageView({
@@ -22,6 +21,7 @@ export function MapPageView({
   shops,
   textColors,
   searchQuery,
+  mapEmbedUrl,
 }: MapPageViewProps) {
   const query = searchQuery?.trim() ?? "";
 
@@ -45,7 +45,7 @@ export function MapPageView({
         </p>
 
         <div className="mb-12">
-          <CoffeeShopMap embedUrl={MAP_EMBED_URL} />
+          <CoffeeShopMap embedUrl={mapEmbedUrl} />
         </div>
         {query && (
           <p

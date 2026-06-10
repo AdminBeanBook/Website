@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MapPageView } from "@/components/pages/MapPageView";
 import { listCoffeeShops } from "@/lib/coffee-shops";
+import { getGoogleMapEmbedUrl } from "@/lib/google-map";
 import { getPageContent } from "@/lib/pages";
 import { buildPageTextColorsContext } from "@/lib/pages/text-colors";
 import { getSiteConfig } from "@/lib/site-config";
@@ -44,6 +45,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
       shops={shops}
       textColors={textColors}
       searchQuery={q}
+      mapEmbedUrl={getGoogleMapEmbedUrl()}
     />
   );
 }
