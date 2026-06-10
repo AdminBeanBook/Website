@@ -17,12 +17,44 @@ export function getStripe(): Stripe {
   return stripeClient;
 }
 
+function normalizeOrigin(url: string): string {
+  return url.replace(/\/$/, "");
+}
+
 export function getSiteOrigin(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    return normalizeOrigin(configured);
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (productionUrl) {
+    return normalizeOrigin(`https://${productionUrl}`);
   }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return normalizeOrigin(`https://${vercelUrl}`);
+  }
+
   return "http://localhost:3000";
+}
+
+/** Prefer the live request host so Stripe return URLs match the site the shopper used. */
+export function getSiteOriginFromRequest(request: Request): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured && !configured.includes("localhost")) {
+    return normalizeOrigin(configured);
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost ?? request.headers.get("host");
+  if (host) {
+    const proto =
+      request.headers.get("x-forwarded-proto") ??
+      (host.includes("localhost") ? "http" : "https");
+    return normalizeOrigin(`${proto}://${host}`);
+  }
+
+  return getSiteOrigin();
 }

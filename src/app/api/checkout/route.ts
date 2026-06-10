@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { BEAN_BOOK_2026 } from "@/lib/products";
 import { captureServerError } from "@/lib/sentry/capture";
-import { getSiteOrigin, getStripe } from "@/lib/stripe";
+import { getSiteOriginFromRequest, getStripe } from "@/lib/stripe";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const stripe = getStripe();
-    const origin = getSiteOrigin();
+    const origin = getSiteOriginFromRequest(request);
     const shippingCents = Number(process.env.SHIPPING_AMOUNT_CENTS ?? "0");
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
