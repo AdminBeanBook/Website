@@ -104,7 +104,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
       action: "checkout",
       placement: [],
       pagePositions: { purchase: { x: 50, y: 58 } },
-      enabled: true,
+      enabled: false,
     },
   ],
 };

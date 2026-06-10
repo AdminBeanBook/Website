@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { PageHero } from "@/components/PageHero";
 import { useSiteConfig } from "@/components/SiteConfigProvider";
+import { useCheckout } from "@/hooks/useCheckout";
 import type { ResolvedPageContent } from "@/lib/pages";
 import {
   colorStyle,
@@ -17,6 +17,7 @@ type PurchasePageViewProps = {
 
 export function PurchasePageView({ page, textColors }: PurchasePageViewProps) {
   const config = useSiteConfig();
+  const { startCheckout, loading, error } = useCheckout();
 
   return (
     <>
@@ -28,14 +29,17 @@ export function PurchasePageView({ page, textColors }: PurchasePageViewProps) {
 
       <section className="px-6 py-16">
         <div className="mx-auto max-w-sm">
-          <Link
-            href="/products/bean-book-2026-edition"
-            className="group block text-center"
+          <button
+            type="button"
+            onClick={startCheckout}
+            disabled={loading}
+            aria-label="Buy Bean Book: 2026 Edition for $25"
+            className="group block w-full text-center disabled:cursor-wait disabled:opacity-80"
           >
-            <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-lg bg-brand-cream shadow-lg transition group-hover:shadow-xl">
+            <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-lg bg-brand-cream shadow-lg transition group-hover:shadow-xl group-disabled:group-hover:shadow-lg">
               <Image
                 src={config.images.productCover}
-                alt="Bean Book: 2026 Edition"
+                alt=""
                 fill
                 className="object-contain p-4"
                 sizes="320px"
@@ -53,7 +57,16 @@ export function PurchasePageView({ page, textColors }: PurchasePageViewProps) {
             >
               $25.00 USD
             </p>
-          </Link>
+            {loading && (
+              <p className="mt-3 text-sm opacity-70">Redirecting to checkout…</p>
+            )}
+          </button>
+
+          {error && (
+            <p className="mt-4 text-center text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          )}
 
           <p
             className="mt-10 text-center text-xs opacity-60"

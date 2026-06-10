@@ -42,7 +42,12 @@ export function getFreeButtonsForPage(
   config: SiteConfig,
   pageSlug: string,
 ): SiteButtonConfig[] {
-  return config.buttons.filter((b) => buttonOnPage(b, pageSlug));
+  return config.buttons.filter((b) => {
+    if (!buttonOnPage(b, pageSlug)) return false;
+    // Purchase page book card starts checkout; skip overlapping overlay buttons.
+    if (pageSlug === "purchase" && b.action === "checkout") return false;
+    return true;
+  });
 }
 
 /** Buttons using fixed slots (e.g. header), excluding free-positioned on this page. */
@@ -183,7 +188,7 @@ export function applyConfigNewButtonAt(
         label: "New button",
         href: "/purchase",
         style: "primary",
-        action: template === "purchase" ? "checkout" : "link",
+        action: "link",
         placement: [],
         pagePositions: { [pageSlug]: position },
         enabled: true,

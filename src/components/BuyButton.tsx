@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { trackPlausibleEvent } from "@/lib/analytics/plausible";
+import { useCheckout } from "@/hooks/useCheckout";
 
 type BuyButtonProps = {
   label?: string;
@@ -12,34 +11,13 @@ export function BuyButton({
   label = "Buy Now",
   className = "btn-primary",
 }: BuyButtonProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleCheckout() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/checkout", { method: "POST" });
-      const data = (await response.json()) as { url?: string; error?: string };
-
-      if (!response.ok || !data.url) {
-        throw new Error(data.error ?? "Could not start checkout");
-      }
-
-      trackPlausibleEvent("Checkout Started");
-      window.location.href = data.url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Checkout failed");
-      setLoading(false);
-    }
-  }
+  const { startCheckout, loading, error } = useCheckout();
 
   return (
     <div className="inline-flex w-full max-w-xs flex-col items-center gap-3">
       <button
         type="button"
-        onClick={handleCheckout}
+        onClick={startCheckout}
         disabled={loading}
         className={`${className} w-full disabled:cursor-wait disabled:opacity-70`}
       >
