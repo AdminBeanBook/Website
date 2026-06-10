@@ -138,11 +138,35 @@ function nudgeLegacyHomeButtonPositions(
   });
 }
 
+function removePurchaseCheckoutOverlay(
+  buttons: SiteButtonConfig[],
+): SiteButtonConfig[] {
+  return buttons.map((button) => {
+    if (!button.pagePositions?.purchase) return button;
+
+    const isPurchaseCheckout =
+      button.action === "checkout" || button.id === "btn-purchase-checkout";
+    if (!isPurchaseCheckout) return button;
+
+    const { purchase: _purchase, ...otherPositions } = button.pagePositions;
+    const pagePositions =
+      Object.keys(otherPositions).length > 0 ? otherPositions : undefined;
+
+    return {
+      ...button,
+      enabled: button.id === "btn-purchase-checkout" ? false : button.enabled,
+      pagePositions,
+    };
+  });
+}
+
 export function migrateSiteConfigButtons(config: SiteConfig): SiteConfig {
   return {
     ...config,
-    buttons: nudgeLegacyHomeButtonPositions(
-      config.buttons.map(migrateButtonPositions),
+    buttons: removePurchaseCheckoutOverlay(
+      nudgeLegacyHomeButtonPositions(
+        config.buttons.map(migrateButtonPositions),
+      ),
     ),
   };
 }

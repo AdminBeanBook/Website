@@ -13,6 +13,10 @@ export function PageFreeButtons() {
   const pathname = usePathname();
   const config = useSiteConfig();
   const pageSlug = pathnameToPageSlug(pathname);
+
+  // Purchase page book card is the checkout control.
+  if (pageSlug === "purchase") return null;
+
   const buttons = getFreeButtonsForPage(config, pageSlug);
 
   if (buttons.length === 0) return null;
