@@ -69,11 +69,15 @@ export async function sendContactReply(
     throw new Error("Invalid recipient email");
   }
 
-  const colors = (await getSiteConfig("published")).colors;
+  const site = await getSiteConfig("published");
   const bodyHtml =
     textToHtml(input.bodyText) +
     quotedOriginalHtml(input.originalMessage, input.originalDate);
-  const html = wrapEmailHtml(bodyHtml, colors);
+  const html = wrapEmailHtml(bodyHtml, {
+    colors: site.colors,
+    logoUrl: site.images.logo,
+    siteName: site.site.name,
+  });
 
   const resend = getResend();
   if (!resend) {

@@ -43,8 +43,13 @@ export async function sendBulkEmail(
     throw new Error("Invalid sender");
   }
 
-  const colors = (await getSiteConfig("published")).colors;
-  const html = wrapEmailHtml(input.htmlBody, colors);
+  const site = await getSiteConfig("published");
+  const html = wrapEmailHtml(input.htmlBody, {
+    colors: site.colors,
+    logoUrl: site.images.logo,
+    siteName: site.site.name,
+    tagline: "Denver coffee passbook",
+  });
 
   let recipients = input.testOnly
     ? [{ email: input.testEmail?.trim() || input.sentByEmail }]

@@ -65,7 +65,7 @@ export async function notifyNewOrderEmail(
     const amount = (order.amountCents / 100).toFixed(2);
     const who = order.customerName?.trim() || order.customerEmail;
     const adminUrl = `${siteOrigin()}/admin/orders/${order.id}`;
-    const colors = (await getSiteConfig("published")).colors;
+    const site = await getSiteConfig("published");
 
     const bodyHtml = `
       <p style="margin:0 0 1em;"><strong>New Bean Book order</strong></p>
@@ -80,7 +80,11 @@ export async function notifyNewOrderEmail(
       from: `${sender.fromName} <${sender.fromEmail}>`,
       to,
       subject: `New order — $${amount} from ${who}`,
-      html: wrapEmailHtml(bodyHtml, colors),
+      html: wrapEmailHtml(bodyHtml, {
+        colors: site.colors,
+        logoUrl: site.images.logo,
+        siteName: site.site.name,
+      }),
     });
 
     if (error) {

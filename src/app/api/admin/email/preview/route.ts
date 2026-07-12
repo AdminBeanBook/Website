@@ -10,8 +10,13 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as { htmlBody?: string };
-  const colors = (await getSiteConfig("published")).colors;
-  const html = wrapEmailHtml(body.htmlBody ?? "", colors);
+  const site = await getSiteConfig("published");
+  const html = wrapEmailHtml(body.htmlBody ?? "", {
+    colors: site.colors,
+    logoUrl: site.images.logo,
+    siteName: site.site.name,
+    tagline: "Denver coffee passbook",
+  });
 
   return NextResponse.json({ html });
 }
