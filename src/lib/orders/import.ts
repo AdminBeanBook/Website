@@ -1,3 +1,4 @@
+import { upsertContactFromCustomer } from "@/lib/contacts/from-customer";
 import { prisma } from "@/lib/db";
 import { BEAN_BOOK_2026 } from "@/lib/products";
 
@@ -505,6 +506,12 @@ export async function importOrders(
           name: row.customerName ?? undefined,
           phone: row.customerPhone ?? undefined,
         },
+      });
+
+      await upsertContactFromCustomer({
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone,
       });
 
       await prisma.order.create({

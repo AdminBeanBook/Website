@@ -1,3 +1,4 @@
+import { upsertContactFromCustomer } from "@/lib/contacts/from-customer";
 import { prisma } from "@/lib/db";
 import { sendStripeInvoiceForOrder } from "@/lib/orders/invoice";
 import { resolveProduct } from "@/lib/products";
@@ -40,6 +41,12 @@ export async function createManualOrder(input: CreateManualOrderInput) {
       name: input.customerName?.trim() || undefined,
       phone: input.customerPhone?.trim() || undefined,
     },
+  });
+
+  await upsertContactFromCustomer({
+    email,
+    name: customer.name,
+    phone: customer.phone,
   });
 
   const order = await prisma.order.create({

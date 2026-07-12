@@ -166,6 +166,48 @@ export function ContactsManager({
     router.refresh();
   }
 
+  async function syncCustomers() {
+    if (
+      !confirm(
+        "Import all Customers into Contacts? Existing emails are updated and tagged “Customer”.",
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    const res = await fetch("/api/admin/contacts/sync-customers", {
+      method: "POST",
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "Sync failed");
+      return;
+    }
+    setMessage(
+      `Synced ${data.total} customers (${data.created} new, ${data.updated} updated)`,
+    );
+    router.refresh();
+    const listRes = await fetch("/api/admin/contacts");
+    if (listRes.ok) {
+      const list = (await listRes.json()) as ContactRow[];
+      setContacts(
+        list.map((c) => ({
+          ...c,
+          createdAt:
+            typeof c.createdAt === "string"
+              ? c.createdAt
+              : new Date(c.createdAt).toISOString(),
+          updatedAt:
+            typeof c.updatedAt === "string"
+              ? c.updatedAt
+              : new Date(c.updatedAt).toISOString(),
+        })),
+      );
+    }
+  }
+
   return (
     <div className="space-y-6">
       {tags.length === 0 && (
@@ -180,6 +222,28 @@ export function ContactsManager({
           so you can label contacts for bulk email.
         </p>
       )}
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Import customers
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Copy everyone from Customers into Contacts (tagged “Customer”).
+              New orders sync automatically going forward.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={syncCustomers}
+            className="rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            Sync customers → contacts
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Add contact</h2>

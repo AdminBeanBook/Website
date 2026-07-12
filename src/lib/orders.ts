@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { upsertContactFromCustomer } from "@/lib/contacts/from-customer";
 import { prisma } from "@/lib/db";
 import { incrementDiscountUsage } from "@/lib/discounts";
 import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
@@ -52,6 +53,12 @@ export async function saveOrderFromStripeSession(
       name: fullSession.customer_details?.name ?? shipping?.name ?? undefined,
       phone: fullSession.customer_details?.phone ?? undefined,
     },
+  });
+
+  await upsertContactFromCustomer({
+    email,
+    name: customer.name,
+    phone: customer.phone,
   });
 
   const order = await prisma.order.create({

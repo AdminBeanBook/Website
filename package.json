@@ -11,6 +11,7 @@
     "db:push": "dotenv -e .env.local -- prisma db push",
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "import-orders": "dotenv -e .env.local -- tsx scripts/import-orders.ts",
+    "sync-customers-contacts": "dotenv -e .env.local -- tsx scripts/sync-customers-to-contacts.ts",
     "db:setup": "dotenv -e .env.local -- prisma db push && dotenv -e .env.local -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "test:e2e": "playwright test",
