@@ -14,8 +14,6 @@ type EmailHtmlEditorProps = {
   colors: BrandColors;
   defaultHtml?: string;
   minHeightClass?: string;
-  /** Match Sidemark-style dark email shell in the editor */
-  darkCanvas?: boolean;
 };
 
 function toolbarMouseDown(e: React.MouseEvent) {
@@ -46,12 +44,40 @@ function ToolButton({
   );
 }
 
+function ColorChip({
+  label,
+  color,
+  onClick,
+  swatchOnly,
+}: {
+  label: string;
+  color: string;
+  onClick: () => void;
+  swatchOnly?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      onMouseDown={toolbarMouseDown}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-gray-800 hover:bg-white"
+    >
+      <span
+        className="inline-block h-3 w-3 rounded-full border border-gray-300"
+        style={{ backgroundColor: color }}
+        aria-hidden
+      />
+      {!swatchOnly && label}
+    </button>
+  );
+}
+
 export function EmailHtmlEditor({
   editorRef,
   colors,
   defaultHtml,
   minHeightClass = "min-h-[280px]",
-  darkCanvas = true,
 }: EmailHtmlEditorProps) {
   const savedRangeRef = useRef<Range | null>(null);
 
@@ -92,10 +118,6 @@ export function EmailHtmlEditor({
     cacheSelection();
   }
 
-  const canvasClass = darkCanvas
-    ? `${minHeightClass} rounded-lg border border-white/20 px-12 py-10 text-base leading-relaxed text-white focus:outline-none focus:ring-2 focus:ring-white/30 [&_a]:underline [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1 [&_h1]:mb-3 [&_h1]:text-3xl [&_h1]:font-semibold [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold`
-    : `${minHeightClass} rounded-lg border border-gray-300 bg-white px-12 py-10 text-sm leading-relaxed text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-green/30 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1`;
-
   return (
     <>
       <div
@@ -115,11 +137,7 @@ export function EmailHtmlEditor({
         >
           U
         </ToolButton>
-        <ToolButton
-          title="Insert link"
-          onClick={addLink}
-          className="underline"
-        >
+        <ToolButton title="Insert link" onClick={addLink} className="underline">
           Link
         </ToolButton>
 
@@ -164,68 +182,39 @@ export function EmailHtmlEditor({
 
         <span className="mx-1 text-gray-300">|</span>
 
-        <button
-          type="button"
-          title="Default text color"
-          onMouseDown={toolbarMouseDown}
-          onClick={() => applyColor(darkCanvas ? "#ffffff" : colors.text.body)}
-          className="rounded px-2 py-1 text-xs font-medium hover:bg-white"
-          style={{ color: darkCanvas ? colors.green : colors.text.body }}
-        >
-          Text
-        </button>
-        <button
-          type="button"
-          title="Main brand color"
-          onMouseDown={toolbarMouseDown}
+        <ColorChip
+          label="Text"
+          color={colors.text.body}
+          onClick={() => applyColor(colors.text.body)}
+        />
+        <ColorChip
+          label="Main"
+          color={colors.green}
           onClick={() => applyColor(colors.green)}
-          className="rounded px-2 py-1 text-xs hover:bg-white"
-          style={{ color: colors.green }}
-        >
-          Main
-        </button>
-        <button
-          type="button"
-          title="Cream / light"
-          onMouseDown={toolbarMouseDown}
+        />
+        <ColorChip
+          label="Cream"
+          color={colors.cream}
           onClick={() => applyColor(colors.cream)}
-          className="rounded px-2 py-1 text-xs hover:bg-white"
-          style={{ color: colors.cream }}
-        >
-          Cream
-        </button>
-        <button
-          type="button"
-          title="Accent color"
-          onMouseDown={toolbarMouseDown}
+        />
+        <ColorChip
+          label="Accent"
+          color={colors.accent}
           onClick={() => applyColor(colors.accent)}
-          className="rounded px-2 py-1 text-xs hover:bg-white"
-          style={{ color: colors.accent }}
-        >
-          Accent
-        </button>
-        <button
-          type="button"
-          title="White text"
-          onMouseDown={toolbarMouseDown}
-          onClick={() => applyColor("#ffffff")}
-          className="rounded bg-brand-green px-2 py-1 text-xs text-white hover:opacity-90"
-        >
-          White
-        </button>
+        />
       </div>
       <div
         ref={editorRef}
         contentEditable
         onMouseUp={cacheSelection}
         onKeyUp={cacheSelection}
-        className={canvasClass}
-        style={darkCanvas ? { backgroundColor: colors.green } : undefined}
+        className={`${minHeightClass} rounded-lg border border-gray-300 bg-white px-12 py-10 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-green/30 [&_a]:underline [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1 [&_h1]:mb-3 [&_h1]:text-3xl [&_h1]:font-semibold [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold`}
+        style={{ color: colors.text.body }}
         suppressContentEditableWarning
       />
       <p className="text-xs text-gray-500">
-        Logo appears at the top of every email automatically. Use Center for
-        headlines and CTAs; use lists for steps.
+        Logo sits in the green header automatically. Use Center for headlines and
+        CTAs; use lists for steps. Colors stay stable in Apple Mail / Gmail.
       </p>
     </>
   );
