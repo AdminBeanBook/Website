@@ -7,6 +7,7 @@ export type SettingsNavItem = {
 
 export const SETTINGS_NAV: SettingsNavItem[] = [
   { href: "/admin/settings/admins", label: "Admin access" },
+  { href: "/admin/settings/links", label: "Quick links" },
   { href: "/admin/settings/contacts", label: "Contacts", exact: true },
   { href: "/admin/settings/contacts/tags", label: "Tags" },
   { href: "/admin/settings/shops", label: "Coffee shops" },

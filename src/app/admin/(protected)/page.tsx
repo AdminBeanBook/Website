@@ -2,14 +2,23 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 
 export default async function AdminDashboardPage() {
-  const [orderCount, customerCount, unreadMessages, activeDiscounts, packageCount] =
-    await Promise.all([
-      prisma.order.count(),
-      prisma.customer.count(),
-      prisma.contactSubmission.count({ where: { read: false } }),
-      prisma.discountCode.count({ where: { active: true } }),
-      prisma.packagePreset.count(),
-    ]);
+  const [
+    orderCount,
+    customerCount,
+    unreadMessages,
+    activeDiscounts,
+    packageCount,
+    quickLinks,
+  ] = await Promise.all([
+    prisma.order.count(),
+    prisma.customer.count(),
+    prisma.contactSubmission.count({ where: { read: false } }),
+    prisma.discountCode.count({ where: { active: true } }),
+    prisma.packagePreset.count(),
+    prisma.adminLink.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+  ]);
 
   const recentOrders = await prisma.order.findMany({
     orderBy: { createdAt: "desc" },
@@ -40,6 +49,48 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">Quick links</h2>
+          <Link
+            href="/admin/settings/links"
+            className="text-sm text-brand-green hover:underline"
+          >
+            Manage links
+          </Link>
+        </div>
+        {quickLinks.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-6 text-sm text-gray-500">
+            No links yet.{" "}
+            <Link
+              href="/admin/settings/links"
+              className="font-medium text-brand-green hover:underline"
+            >
+              Add reporting and tool shortcuts
+            </Link>
+            .
+          </p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {quickLinks.map((link) => (
+              <li key={link.id}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm hover:border-brand-green/40 hover:text-brand-green"
+                >
+                  <span className="truncate">{link.name}</span>
+                  <span aria-hidden className="shrink-0 text-gray-400">
+                    ↗
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-4 text-lg font-medium">Recent orders</h2>
