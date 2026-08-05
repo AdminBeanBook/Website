@@ -7,12 +7,14 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch("/api/admin/login", {
@@ -24,7 +26,8 @@ export default function AdminLoginPage() {
       if (!res.ok) throw new Error(data.error ?? "Login failed");
       router.push("/admin");
       router.refresh();
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
       setLoading(false);
     }
   }
@@ -35,10 +38,10 @@ export default function AdminLoginPage() {
       className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black px-6"
     >
       <input
-        type="text"
+        type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="username"
+        placeholder="email"
         required
         autoComplete="username"
         className="w-full max-w-xs border border-white/30 bg-black px-3 py-2 text-white placeholder:text-white/50 focus:border-white focus:outline-none"
@@ -52,8 +55,17 @@ export default function AdminLoginPage() {
         autoComplete="current-password"
         className="w-full max-w-xs border border-white/30 bg-black px-3 py-2 text-white placeholder:text-white/50 focus:border-white focus:outline-none"
       />
-      <button type="submit" className="sr-only">
-        Sign in
+      {error && (
+        <p className="w-full max-w-xs text-center text-sm text-red-400">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full max-w-xs border border-white bg-white px-3 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
+      >
+        {loading ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );
