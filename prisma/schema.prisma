@@ -195,6 +195,7 @@ model SiteSettings {
 model CoffeeShop {
   id            String   @id @default(cuid())
   name          String
+  email         String   @default("")
   website       String   @default("")
   locationLabel String   @default("Location")
   locationsJson String

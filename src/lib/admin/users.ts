@@ -92,3 +92,30 @@ export async function deleteAdminUser(id: string, currentUserId: string) {
 
   await prisma.adminUser.delete({ where: { id } });
 }
+
+/** Change the signed-in admin's password after verifying the current one. */
+export async function changeOwnPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  if (newPassword.length < 8) {
+    throw new Error("New password must be at least 8 characters");
+  }
+
+  const user = await prisma.adminUser.findUnique({ where: { id: userId } });
+  if (!user || !user.active) {
+    throw new Error("Admin not found");
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.adminUser.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+}

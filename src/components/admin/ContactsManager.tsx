@@ -21,6 +21,7 @@ export function ContactsManager({
   const [contacts, setContacts] = useState(initialContacts);
   const [tags] = useState(initialTags);
   const [filterTagId, setFilterTagId] = useState("");
+  const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,9 +33,21 @@ export function ContactsManager({
   const [loading, setLoading] = useState(false);
 
   const filtered = useMemo(() => {
-    if (!filterTagId) return contacts;
-    return contacts.filter((c) => c.tags.some((t) => t.id === filterTagId));
-  }, [contacts, filterTagId]);
+    const q = query.trim().toLowerCase();
+    return contacts.filter((c) => {
+      if (filterTagId && !c.tags.some((t) => t.id === filterTagId)) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        (c.email?.toLowerCase().includes(q) ?? false) ||
+        (c.phone?.toLowerCase().includes(q) ?? false) ||
+        (c.notes?.toLowerCase().includes(q) ?? false) ||
+        c.tags.some((t) => t.name.toLowerCase().includes(q))
+      );
+    });
+  }, [contacts, filterTagId, query]);
 
   function toggleTag(id: string) {
     setSelectedTagIds((prev) =>
@@ -359,26 +372,43 @@ export function ContactsManager({
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900">
-            All contacts ({filtered.length})
+            All contacts ({filtered.length}
+            {query.trim() || filterTagId
+              ? ` of ${contacts.length}`
+              : ""}
+            )
           </h2>
-          {tags.length > 0 && (
-            <select
-              value={filterTagId}
-              onChange={(e) => setFilterTagId(e.target.value)}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
-            >
-              <option value="">All tags</option>
-              {tags.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, email, phone, notes, or tag…"
+              className="min-w-[14rem] flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm sm:min-w-[18rem]"
+            />
+            {tags.length > 0 && (
+              <select
+                value={filterTagId}
+                onChange={(e) => setFilterTagId(e.target.value)}
+                className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+              >
+                <option value="">All tags</option>
+                {tags.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         {filtered.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">No contacts yet.</p>
+          <p className="mt-4 text-sm text-gray-500">
+            {contacts.length === 0
+              ? "No contacts yet."
+              : "No contacts match your search."}
+          </p>
         ) : (
           <ul className="mt-4 divide-y divide-gray-100">
             {filtered.map((contact) => (

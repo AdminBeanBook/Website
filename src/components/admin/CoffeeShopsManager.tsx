@@ -37,6 +37,7 @@ export function CoffeeShopsManager({
   const isSidebar = variant === "sidebar";
   const [shops, setShops] = useState(() => sortShopsByName(initialShops));
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [locationLabel, setLocationLabel] = useState<LocationLabel>("Location");
   const [locationsText, setLocationsText] = useState("");
@@ -58,6 +59,7 @@ export function CoffeeShopsManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        email,
         website,
         locationLabel,
         locationsText,
@@ -77,6 +79,7 @@ export function CoffeeShopsManager({
         {
           id: data.id,
           name: data.name,
+          email: data.email ?? "",
           website: data.website,
           locationLabel:
             data.locationLabel === "Locations" ? "Locations" : "Location",
@@ -87,6 +90,7 @@ export function CoffeeShopsManager({
       ]),
     );
     setName("");
+    setEmail("");
     setWebsite("");
     setLocationLabel("Location");
     setLocationsText("");
@@ -94,10 +98,33 @@ export function CoffeeShopsManager({
     notifyChange();
   }
 
+  async function syncToContacts() {
+    if (
+      !confirm(
+        "Import all active coffee shops into Contacts with the “Coffee shop” tag? Emails on each shop will be copied over.",
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    const res = await fetch("/api/admin/shops/sync-contacts", { method: "POST" });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "Sync failed");
+      return;
+    }
+    setMessage(
+      `Synced ${data.total} shops to contacts (${data.created} new, ${data.updated} updated)`,
+    );
+  }
+
   async function updateShop(
     shop: CoffeeShopRow,
     patch: {
       name?: string;
+      email?: string;
       website?: string;
       locationLabel?: LocationLabel;
       locationsText?: string;
@@ -122,6 +149,7 @@ export function CoffeeShopsManager({
             ? {
                 id: updated.id,
                 name: updated.name,
+                email: updated.email ?? "",
                 website: updated.website,
                 locationLabel:
                   updated.locationLabel === "Locations"
@@ -165,6 +193,18 @@ export function CoffeeShopsManager({
               />
             </div>
             <div>
+              <label className="text-xs font-medium text-gray-600">
+                Email (for contacts / bulk email)
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="shop@example.com"
+                className={inputClass}
+              />
+            </div>
+            <div className={isSidebar ? undefined : "sm:col-span-2"}>
               <label className="text-xs font-medium text-gray-600">
                 Website URL
               </label>
@@ -265,8 +305,31 @@ export function CoffeeShopsManager({
         <Link href="/map" className="text-brand-green hover:underline">
           Map & Coffee Shops
         </Link>{" "}
-        page. Inactive shops are hidden from the site but kept here.
+        page. Inactive shops are hidden from the site but kept here. Add an
+        email on each shop so Contacts / bulk email can reach them.
       </p>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Import to contacts
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Copy active shops into Contacts with the “Coffee shop” tag,
+              including emails when set.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void syncToContacts()}
+            className="rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            Sync shops → contacts
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Add coffee shop</h2>
@@ -301,6 +364,7 @@ function ShopRowEditor({
     s: CoffeeShopRow,
     patch: {
       name?: string;
+      email?: string;
       website?: string;
       locationLabel?: LocationLabel;
       locationsText?: string;
@@ -311,6 +375,7 @@ function ShopRowEditor({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(shop.name);
+  const [email, setEmail] = useState(shop.email);
   const [website, setWebsite] = useState(shop.website);
   const [locationLabel, setLocationLabel] = useState(shop.locationLabel);
   const [locationsText, setLocationsText] = useState(
@@ -320,6 +385,7 @@ function ShopRowEditor({
   async function save() {
     await onUpdate(shop, {
       name,
+      email,
       website,
       locationLabel,
       locationsText,
@@ -346,6 +412,7 @@ function ShopRowEditor({
           <p className={compact ? "mt-0.5 text-xs text-gray-600" : "mt-1 text-sm text-gray-600"}>
             {shop.locationLabel}: {shop.locations.length} line
             {shop.locations.length === 1 ? "" : "s"}
+            {shop.email ? ` · ${shop.email}` : " · no email"}
           </p>
           {shop.website && !compact && (
             <a
@@ -404,6 +471,13 @@ function ShopRowEditor({
         onChange={(e) => setName(e.target.value)}
         className={inputClass}
         placeholder="Shop name"
+      />
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className={inputClass}
+        placeholder="Email (for contacts)"
       />
       <input
         value={website}

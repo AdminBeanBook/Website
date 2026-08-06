@@ -28,6 +28,42 @@ export function AdminAccessManager({
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordLoading(true);
+    setPasswordMessage(null);
+    setPasswordError(null);
+
+    const res = await fetch("/api/admin/me/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      }),
+    });
+    const data = (await res.json()) as { error?: string };
+    setPasswordLoading(false);
+
+    if (!res.ok) {
+      setPasswordError(data.error ?? "Could not change password");
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMessage("Password updated. Use it next time you sign in.");
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -80,6 +116,80 @@ export function AdminAccessManager({
 
   return (
     <div className="space-y-6">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Change your password
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Update the password for your own admin login.
+        </p>
+        <form
+          onSubmit={handleChangePassword}
+          className="mt-4 grid max-w-md gap-3"
+        >
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Current password
+            </label>
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              New password (min 8 characters)
+            </label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Confirm new password
+            </label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <button
+              type="submit"
+              disabled={passwordLoading}
+              className="rounded bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              {passwordLoading ? "Updating…" : "Update password"}
+            </button>
+          </div>
+        </form>
+        {passwordError && (
+          <p className="mt-3 text-sm text-red-700" role="alert">
+            {passwordError}
+          </p>
+        )}
+        {passwordMessage && (
+          <p className="mt-3 text-sm text-green-700" role="status">
+            {passwordMessage}
+          </p>
+        )}
+      </section>
+
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">People with access</h2>
         <p className="mt-1 text-sm text-gray-500">

@@ -28,6 +28,7 @@ export function CustomersManager({
         customer.email.toLowerCase().includes(q) ||
         (customer.name?.toLowerCase().includes(q) ?? false) ||
         (customer.phone?.toLowerCase().includes(q) ?? false) ||
+        (customer.notes?.toLowerCase().includes(q) ?? false) ||
         customer.tags.some((tag) => tag.name.toLowerCase().includes(q))
       );
     });

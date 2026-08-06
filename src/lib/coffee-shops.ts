@@ -5,6 +5,7 @@ export type LocationLabel = "Location" | "Locations";
 export type CoffeeShopRow = {
   id: string;
   name: string;
+  email: string;
   website: string;
   locationLabel: LocationLabel;
   locations: string[];
@@ -40,6 +41,7 @@ export function parseLocationsText(raw: string): string[] {
 function toRow(shop: {
   id: string;
   name: string;
+  email: string;
   website: string;
   locationLabel: string;
   locationsJson: string;
@@ -51,6 +53,7 @@ function toRow(shop: {
   return {
     id: shop.id,
     name: shop.name,
+    email: shop.email ?? "",
     website: shop.website,
     locationLabel: label,
     locations: parseLocationsJson(shop.locationsJson),

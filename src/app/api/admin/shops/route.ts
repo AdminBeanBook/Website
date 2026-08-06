@@ -28,6 +28,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     name?: string;
+    email?: string;
     website?: string;
     locationLabel?: LocationLabel;
     locationsText?: string;
@@ -38,6 +39,14 @@ export async function POST(request: Request) {
   const name = body.name?.trim();
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
+
+  const email = body.email?.trim().toLowerCase() || "";
+  if (email && !email.includes("@")) {
+    return NextResponse.json(
+      { error: "Enter a valid email or leave it blank" },
+      { status: 400 },
+    );
   }
 
   const locations = parseLocationsText(body.locationsText ?? "");
@@ -51,6 +60,7 @@ export async function POST(request: Request) {
   const shop = await prisma.coffeeShop.create({
     data: {
       name,
+      email,
       website: body.website?.trim() || "",
       locationLabel:
         body.locationLabel === "Locations" ? "Locations" : "Location",

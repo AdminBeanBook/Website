@@ -18,6 +18,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const body = (await request.json()) as {
     name?: string;
+    email?: string;
     website?: string;
     locationLabel?: LocationLabel;
     locationsText?: string;
@@ -27,6 +28,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const data: {
     name?: string;
+    email?: string;
     website?: string;
     locationLabel?: string;
     locationsJson?: string;
@@ -40,6 +42,16 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     data.name = name;
+  }
+  if (body.email !== undefined) {
+    const email = body.email.trim().toLowerCase();
+    if (email && !email.includes("@")) {
+      return NextResponse.json(
+        { error: "Enter a valid email or leave it blank" },
+        { status: 400 },
+      );
+    }
+    data.email = email;
   }
   if (body.website !== undefined) data.website = body.website.trim();
   if (body.locationLabel !== undefined) {
