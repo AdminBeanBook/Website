@@ -4,6 +4,9 @@ import { BEAN_BOOK_2026 } from "@/lib/products";
 import { captureServerError } from "@/lib/sentry/capture";
 import { getSiteOriginFromRequest, getStripe } from "@/lib/stripe";
 
+/** Stripe Tax code: physical books / printed materials. */
+const BOOK_TAX_CODE = "txcd_35010000";
+
 export async function POST(request: Request) {
   try {
     const stripe = getStripe();
@@ -19,10 +22,12 @@ export async function POST(request: Request) {
               price_data: {
                 currency: BEAN_BOOK_2026.currency,
                 unit_amount: BEAN_BOOK_2026.priceCents,
+                tax_behavior: "exclusive",
                 product_data: {
                   name: BEAN_BOOK_2026.name,
                   description: BEAN_BOOK_2026.description,
                   images: [BEAN_BOOK_2026.imageUrl],
+                  tax_code: BOOK_TAX_CODE,
                 },
               },
             },
@@ -32,6 +37,7 @@ export async function POST(request: Request) {
       mode: "payment",
       line_items: lineItems,
       allow_promotion_codes: true,
+      automatic_tax: { enabled: true },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/cancel`,
       shipping_address_collection: {
@@ -55,12 +61,18 @@ export async function POST(request: Request) {
               currency: "usd",
             },
             display_name: "Standard shipping",
+            tax_behavior: "exclusive",
           },
         },
       ];
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    // New Stripe accounts enable Managed Payments by default (digital-only).
+    // Physical books need shipping addresses, so disable it for this session.
+    const session = await stripe.checkout.sessions.create({
+      ...sessionParams,
+      managed_payments: { enabled: false },
+    } as Stripe.Checkout.SessionCreateParams);
 
     if (!session.url) {
       return NextResponse.json(

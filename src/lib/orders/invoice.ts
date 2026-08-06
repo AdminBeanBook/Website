@@ -57,17 +57,49 @@ export async function sendStripeInvoiceForOrder(orderId: string) {
     order.customerName ?? order.shippingName,
   );
 
+  // Stripe Tax needs a customer address; use the order ship-to when present.
+  if (
+    order.shippingLine1 &&
+    order.shippingCity &&
+    order.shippingState &&
+    order.shippingPostal
+  ) {
+    await stripe.customers.update(customer.id, {
+      shipping: {
+        name: order.shippingName ?? order.customerName ?? customer.name ?? "Customer",
+        address: {
+          line1: order.shippingLine1,
+          line2: order.shippingLine2 ?? undefined,
+          city: order.shippingCity,
+          state: order.shippingState,
+          postal_code: order.shippingPostal,
+          country: order.shippingCountry ?? "US",
+        },
+      },
+      address: {
+        line1: order.shippingLine1,
+        line2: order.shippingLine2 ?? undefined,
+        city: order.shippingCity,
+        state: order.shippingState,
+        postal_code: order.shippingPostal,
+        country: order.shippingCountry ?? "US",
+      },
+    });
+  }
+
   await stripe.invoiceItems.create({
     customer: customer.id,
     amount: order.amountCents,
     currency: "usd",
     description: invoiceDescription(order),
+    tax_behavior: "exclusive",
   });
 
   const invoice = await stripe.invoices.create({
     customer: customer.id,
     collection_method: "send_invoice",
     days_until_due: INVOICE_DUE_DAYS,
+    automatic_tax: { enabled: true },
     metadata: {
       order_id: order.id,
       product_id: order.productId ?? BEAN_BOOK_2026.id,
