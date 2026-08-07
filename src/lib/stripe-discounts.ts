@@ -31,17 +31,10 @@ function promotionCodeParams(
   };
 }
 
-export async function syncDiscountToStripe(
+async function createCouponAndPromotion(
   record: DiscountRecord,
 ): Promise<DiscountCode> {
   const stripe = getStripe();
-
-  if (record.stripePromotionCodeId) {
-    await stripe.promotionCodes.update(record.stripePromotionCodeId, {
-      active: record.active,
-    });
-    return record as DiscountCode;
-  }
 
   const couponParams: Stripe.CouponCreateParams = {
     duration: "once",
@@ -65,11 +58,61 @@ export async function syncDiscountToStripe(
   });
 }
 
+/**
+ * Ensure a discount exists as a Stripe Promotion Code on the current Stripe account.
+ * If stored IDs belong to an old account (or are missing), creates new coupon + promo.
+ */
+export async function syncDiscountToStripe(
+  record: DiscountRecord,
+  options?: { forceRecreate?: boolean },
+): Promise<DiscountCode> {
+  const stripe = getStripe();
+
+  if (record.stripePromotionCodeId && !options?.forceRecreate) {
+    try {
+      await stripe.promotionCodes.update(record.stripePromotionCodeId, {
+        active: record.active,
+      });
+      return record as DiscountCode;
+    } catch {
+      // IDs from a previous Stripe account — recreate below.
+    }
+  }
+
+  return createCouponAndPromotion(record);
+}
+
+/** Re-create every discount code on the current Stripe account (e.g. after switching accounts). */
+export async function resyncAllDiscountsToStripe() {
+  const codes = await prisma.discountCode.findMany({
+    orderBy: { createdAt: "asc" },
+  });
+
+  let synced = 0;
+  const errors: string[] = [];
+
+  for (const code of codes) {
+    try {
+      await syncDiscountToStripe(code, { forceRecreate: true });
+      synced += 1;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      errors.push(`${code.code}: ${message}`);
+    }
+  }
+
+  return { total: codes.length, synced, errors };
+}
+
 export async function deactivateStripePromotion(
   stripePromotionCodeId: string | null | undefined,
 ) {
   if (!stripePromotionCodeId) return;
 
   const stripe = getStripe();
-  await stripe.promotionCodes.update(stripePromotionCodeId, { active: false });
+  try {
+    await stripe.promotionCodes.update(stripePromotionCodeId, { active: false });
+  } catch {
+    // Ignore — code may belong to a previous Stripe account.
+  }
 }
