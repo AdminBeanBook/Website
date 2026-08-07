@@ -36,6 +36,27 @@ async function createCouponAndPromotion(
 ): Promise<DiscountCode> {
   const stripe = getStripe();
 
+  // If this code already exists on the current Stripe account, attach its IDs.
+  const existing = await stripe.promotionCodes.list({
+    code: record.code,
+    limit: 1,
+  });
+  const found = existing.data[0];
+  if (found) {
+    if (found.active !== record.active) {
+      await stripe.promotionCodes.update(found.id, { active: record.active });
+    }
+    const couponId =
+      typeof found.coupon === "string" ? found.coupon : found.coupon.id;
+    return prisma.discountCode.update({
+      where: { id: record.id },
+      data: {
+        stripeCouponId: couponId,
+        stripePromotionCodeId: found.id,
+      },
+    });
+  }
+
   const couponParams: Stripe.CouponCreateParams = {
     duration: "once",
     name: record.code,
