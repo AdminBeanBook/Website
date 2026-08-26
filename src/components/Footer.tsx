@@ -30,8 +30,13 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/partners/login" className="hover:underline">
+                shop portal
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/login" className="hover:underline">
-                sign in
+                admin sign in
               </Link>
             </li>
           </ul>
