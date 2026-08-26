@@ -26,8 +26,8 @@ In [Stripe Dashboard](https://dashboard.stripe.com) switch to **Live** mode (tog
 | Variable | Where to get it |
 |----------|-----------------|
 | `STRIPE_SECRET_KEY` | Developers → API keys → **Secret key** (`sk_live_...`) |
-| `NEXT_PUBLIC_SITE_URL` | Your live site, e.g. `https://thebeanbook.org` (no trailing slash) |
-| `GOOGLE_MAP_EMBED_URL` | Google My Maps embed iframe `src` (Map page). Copy from `.env.local`. |
+| `NEXT_PUBLIC_SITE_URL` | Your live site, e.g. `https://thebeanbook.com` (no trailing slash) |
+| `GOOGLE_MAP_EMBED_URL` | Optional — Google My Maps embed iframe `src`. Defaults to the 2026 map if unset. |
 
 Add these in **Vercel → Project → Settings → Environment Variables** for Production.
 
