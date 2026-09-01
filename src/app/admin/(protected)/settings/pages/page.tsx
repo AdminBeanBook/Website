@@ -1,5 +1,6 @@
 import { WebsiteEditor } from "@/components/admin/WebsiteEditor";
 import { listCoffeeShops } from "@/lib/coffee-shops";
+import { getGoogleMapEmbedUrl } from "@/lib/google-map";
 import {
   ensurePagesSeeded,
   getAllPagesForAdmin,
@@ -36,6 +37,7 @@ export default async function AdminPagesPage() {
         draftSite,
       )}
       initialCoffeeShops={coffeeShops}
+      mapEmbedUrl={getGoogleMapEmbedUrl()}
     />
   );
 }

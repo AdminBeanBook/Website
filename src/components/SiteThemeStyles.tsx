@@ -1,8 +1,14 @@
 import { hexToRgbChannels } from "@/lib/site-config/colors";
 import type { BrandColors } from "@/lib/site-config/types";
 
-export function SiteThemeStyles({ colors }: { colors: BrandColors }) {
-  const css = `:root {
+export function SiteThemeStyles({
+  colors,
+  selector = ":root",
+}: {
+  colors: BrandColors;
+  selector?: string;
+}) {
+  const css = `${selector} {
   --bb-green: ${colors.green};
   --bb-header: ${colors.header};
   --bb-beige: ${colors.beige};

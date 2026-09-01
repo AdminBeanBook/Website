@@ -16,6 +16,12 @@ import {
   type PlacedPageImage,
 } from "@/lib/pages/placed-images";
 import type { PageTemplate } from "@/lib/site-config/types";
+import {
+  parsePageSections,
+  pageSectionsEqual,
+  serializePageSections,
+  type PageSection,
+} from "@/lib/pages/sections";
 
 export type { PlacedPageImage } from "@/lib/pages/placed-images";
 export {
@@ -29,7 +35,12 @@ export {
   parsePageTextColors,
   serializePageTextColors,
 } from "@/lib/pages/text-colors";
-export { getPageTextSlots } from "@/lib/pages/text-slots";
+export type { PageSection } from "@/lib/pages/sections";
+export {
+  parsePageSections,
+  serializePageSections,
+  resolvePageSections,
+} from "@/lib/pages/sections";
 
 export type PageContentVariant = "published" | "draft";
 
@@ -46,6 +57,7 @@ export type ResolvedPageContent = {
   body: string;
   placedImages: PlacedPageImage[];
   textColorOverrides: PageTextColorOverrides;
+  sections: PageSection[];
 };
 
 type PageRecord = {
@@ -68,6 +80,8 @@ type PageRecord = {
   draftShowInNav: boolean | null;
   textColors: string | null;
   draftTextColors: string | null;
+  sections?: string | null;
+  draftSections?: string | null;
 };
 
 function resolveFields(
@@ -112,6 +126,7 @@ function resolveFields(
       body: record?.body || defaults?.body || "",
       placedImages: parsePlacedImages(record?.placedImages),
       textColorOverrides: parsePageTextColors(record?.textColors),
+      sections: parsePageSections(record?.sections),
     };
   }
 
@@ -135,6 +150,7 @@ function resolveFields(
     textColorOverrides: parsePageTextColors(
       record?.draftTextColors ?? record?.textColors,
     ),
+    sections: parsePageSections(record?.draftSections ?? record?.sections),
   };
 }
 
@@ -163,6 +179,8 @@ export function pageHasUnpublishedChanges(page: PageRecord & { id: string }): bo
   const draftTextColors = parsePageTextColors(page.draftTextColors);
   const publishedTextColors = parsePageTextColors(page.textColors);
   const template = page.draftTemplate ?? page.template;
+  const draftSections = parsePageSections(page.draftSections ?? page.sections);
+  const publishedSections = parsePageSections(page.sections);
 
   return (
     draftTitle !== page.title ||
@@ -173,7 +191,8 @@ export function pageHasUnpublishedChanges(page: PageRecord & { id: string }): bo
     draftTemplate !== page.template ||
     draftEnabled !== page.enabled ||
     draftShowInNav !== page.showInNav ||
-    !pageTextColorsEqual(draftTextColors, publishedTextColors, template)
+    !pageTextColorsEqual(draftTextColors, publishedTextColors, template) ||
+    !pageSectionsEqual(draftSections, publishedSections)
   );
 }
 
@@ -260,10 +279,12 @@ export async function ensurePagesSeeded() {
         subtitle: def.subtitle ?? null,
         body: def.body,
         placedImages: "[]",
+        sections: "[]",
         draftTitle: def.title,
         draftSubtitle: def.subtitle ?? null,
         draftBody: def.body,
         draftPlacedImages: "[]",
+        draftSections: "[]",
         draftPath: def.path,
         draftTemplate: def.template,
         draftEnabled: true,
@@ -289,6 +310,7 @@ export async function savePageDraft(input: {
   body: string;
   placedImages?: PlacedPageImage[];
   textColors?: PageTextColorOverrides;
+  sections?: PageSection[];
   path?: string;
   template?: string;
   enabled?: boolean;
@@ -303,6 +325,9 @@ export async function savePageDraft(input: {
   };
   if (input.placedImages !== undefined) {
     data.draftPlacedImages = serializePlacedImages(input.placedImages);
+  }
+  if (input.sections !== undefined) {
+    data.draftSections = serializePageSections(input.sections);
   }
   if (input.path !== undefined) data.draftPath = input.path;
   if (input.template !== undefined) data.draftTemplate = input.template;
@@ -345,10 +370,12 @@ export async function createPage(input: {
       subtitle: null,
       body: "",
       placedImages: "[]",
+      sections: "[]",
       draftTitle: input.title,
       draftSubtitle: null,
       draftBody: "",
       draftPlacedImages: "[]",
+      draftSections: "[]",
       draftPath: path,
       draftTemplate: template,
       draftEnabled: true,
@@ -379,6 +406,7 @@ export async function publishPage(slug: string) {
   const showInNav = page.draftShowInNav ?? page.showInNav;
   const textColors =
     page.draftTextColors ?? serializePageTextColors({});
+  const sections = page.draftSections ?? page.sections ?? "[]";
   const now = new Date();
 
   return prisma.pageContent.update({
@@ -393,12 +421,14 @@ export async function publishPage(slug: string) {
       enabled,
       showInNav,
       textColors,
+      sections,
       publishedAt: now,
       draftTitle: title,
       draftSubtitle: subtitle,
       draftBody: body,
       draftPlacedImages: placedImages,
       draftTextColors: textColors,
+      draftSections: sections,
       draftPath: path,
       draftTemplate: template,
       draftEnabled: enabled,
@@ -427,6 +457,7 @@ export async function discardPageDraft(slug: string) {
       draftBody: page.body,
       draftPlacedImages: page.placedImages,
       draftTextColors: page.textColors,
+      draftSections: page.sections,
       draftPath: page.path,
       draftTemplate: page.template,
       draftEnabled: page.enabled,

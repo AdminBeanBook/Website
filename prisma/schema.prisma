@@ -169,12 +169,14 @@ model PageContent {
   body           String    @default("")
   placedImages   String    @default("[]")
   textColors     String?
+  sections       String    @default("[]")
   publishedAt    DateTime  @default(now())
   draftTitle     String?
   draftSubtitle  String?
   draftBody      String?
   draftPlacedImages String?
   draftTextColors String?
+  draftSections  String?
   draftPath      String?
   draftTemplate  String?
   draftEnabled   Boolean?

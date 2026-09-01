@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import {
   getAllPagesForAdmin,
   pageHasUnpublishedChanges,
   savePageDraft,
 } from "@/lib/pages";
+import { parsePageSections } from "@/lib/pages/sections";
 
 export async function GET() {
   const admin = await requireAdminSession();
@@ -35,6 +35,12 @@ export async function PUT(request: Request) {
     subtitle?: string | null;
     body?: string;
     placedImages?: { id: string; url: string; x: number; y: number; width?: number; alt?: string }[];
+    sections?: {
+      id: string;
+      type: string;
+      enabled: boolean;
+      settings: Record<string, unknown>;
+    }[];
     path?: string;
     template?: string;
     enabled?: boolean;
@@ -53,6 +59,9 @@ export async function PUT(request: Request) {
       subtitle: body.subtitle ?? null,
       body: body.body ?? "",
       placedImages: body.placedImages,
+      sections: Array.isArray(body.sections)
+        ? parsePageSections(JSON.stringify(body.sections))
+        : undefined,
       path: body.path,
       template: body.template,
       enabled: body.enabled,

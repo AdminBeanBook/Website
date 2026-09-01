@@ -1,4 +1,3 @@
-import { BuyButton } from "@/components/BuyButton";
 import { PageHero } from "@/components/PageHero";
 import type { ResolvedPageContent } from "@/lib/pages";
 import {
@@ -14,8 +13,6 @@ type SoWhatIsItPageViewProps = {
 const sectionHeadingClass = "!mt-12 text-center text-2xl font-light";
 
 export function SoWhatIsItPageView({ page, textColors }: SoWhatIsItPageViewProps) {
-  const headingStyle = colorStyle("sectionHeading", textColors);
-
   return (
     <>
       <PageHero
@@ -24,7 +21,20 @@ export function SoWhatIsItPageView({ page, textColors }: SoWhatIsItPageViewProps
         textColors={textColors}
       />
 
-      <section className="px-6 py-16">
+      <SoWhatIsItArticle textColors={textColors} />
+    </>
+  );
+}
+
+export function SoWhatIsItArticle({
+  textColors,
+}: {
+  textColors: PageTextColorsContext;
+}) {
+  const headingStyle = colorStyle("sectionHeading", textColors);
+
+  return (
+    <section className="px-6 py-16">
         <div className="prose-bb" style={colorStyle("body", textColors)}>
           <p>
             The Bean Book is a Denver coffee passbook that goes beyond being
@@ -121,12 +131,7 @@ export function SoWhatIsItPageView({ page, textColors }: SoWhatIsItPageViewProps
           <h2 className={sectionHeadingClass} style={headingStyle}>
             Are You Ready to Begin Your Coffee Journey?
           </h2>
-
-          <div className="!mt-10 flex justify-center">
-            <BuyButton />
-          </div>
         </div>
       </section>
-    </>
   );
 }
