@@ -69,6 +69,12 @@ export async function sendBulkEmail(
   let successCount = 0;
   let failureCount = 0;
   const errors: string[] = [];
+  const recipientRecords: {
+    email: string;
+    name: string | null;
+    status: "sent" | "failed";
+    error: string | null;
+  }[] = [];
 
   if (dryRun) {
     console.log("[email dry-run]", {
@@ -77,6 +83,14 @@ export async function sendBulkEmail(
       recipients: recipients.map((r) => r.email),
     });
     successCount = recipients.length;
+    for (const recipient of recipients) {
+      recipientRecords.push({
+        email: recipient.email,
+        name: recipient.label ?? null,
+        status: "sent",
+        error: null,
+      });
+    }
   } else {
     for (const recipient of recipients) {
       try {
@@ -89,14 +103,31 @@ export async function sendBulkEmail(
         if (error) {
           failureCount += 1;
           errors.push(`${recipient.email}: ${error.message}`);
+          recipientRecords.push({
+            email: recipient.email,
+            name: recipient.label ?? null,
+            status: "failed",
+            error: error.message,
+          });
         } else {
           successCount += 1;
+          recipientRecords.push({
+            email: recipient.email,
+            name: recipient.label ?? null,
+            status: "sent",
+            error: null,
+          });
         }
       } catch (err) {
+        const message = err instanceof Error ? err.message : "Send failed";
         failureCount += 1;
-        errors.push(
-          `${recipient.email}: ${err instanceof Error ? err.message : "Send failed"}`,
-        );
+        errors.push(`${recipient.email}: ${message}`);
+        recipientRecords.push({
+          email: recipient.email,
+          name: recipient.label ?? null,
+          status: "failed",
+          error: message,
+        });
       }
     }
   }
@@ -106,12 +137,18 @@ export async function sendBulkEmail(
       data: {
         subject: input.subject,
         senderKey: input.senderKey,
+        fromEmail: sender.fromEmail,
+        fromName: sender.fromName,
         audience: input.audience,
         htmlBody: input.htmlBody,
         recipientCount: recipients.length,
         successCount,
         failureCount,
         sentByEmail: input.sentByEmail,
+        dryRun,
+        recipients: {
+          create: recipientRecords,
+        },
       },
     });
   }

@@ -46,16 +46,33 @@ model ContactTag {
 }
 
 model SentEmailBatch {
-  id             String   @id @default(cuid())
+  id             String               @id @default(cuid())
   subject        String
   senderKey      String
+  fromEmail      String               @default("")
+  fromName       String               @default("")
   audience       String
   htmlBody       String
   recipientCount Int
-  successCount   Int      @default(0)
-  failureCount   Int      @default(0)
+  successCount   Int                  @default(0)
+  failureCount   Int                  @default(0)
   sentByEmail    String
-  createdAt      DateTime @default(now())
+  dryRun         Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  recipients     SentEmailRecipient[]
+}
+
+model SentEmailRecipient {
+  id        String         @id @default(cuid())
+  batchId   String
+  batch     SentEmailBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  email     String
+  name      String?
+  status    String         @default("sent")
+  error     String?
+  createdAt DateTime       @default(now())
+
+  @@index([batchId])
 }
 
 model EmailTemplate {

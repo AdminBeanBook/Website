@@ -52,7 +52,7 @@ export function BulkEmailComposer({
   const [selectedTemplateId, setSelectedTemplateId] = useState(
     prefillTemplate?.id ?? "",
   );
-  const [audience, setAudience] = useState<Audience>("customers");
+  const [audience, setAudience] = useState<Audience>("custom");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [customEmails, setCustomEmails] = useState("");
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
@@ -60,10 +60,9 @@ export function BulkEmailComposer({
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
-  const [editorReady, setEditorReady] = useState(false);
-
-  const initialBody =
-    prefillTemplate?.htmlBody ?? EMAIL_TEMPLATE_STARTER;
+  const [draftHtml, setDraftHtml] = useState(
+    prefillTemplate?.htmlBody ?? EMAIL_TEMPLATE_STARTER,
+  );
 
   const refreshCount = useCallback(async () => {
     const params = new URLSearchParams({
@@ -84,18 +83,14 @@ export function BulkEmailComposer({
     refreshCount();
   }, [refreshCount]);
 
-  useEffect(() => {
-    if (editorRef.current && editorReady && !editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = initialBody;
-    }
-  }, [editorReady, initialBody]);
-
-  useEffect(() => {
-    setEditorReady(true);
-  }, []);
-
   function getBodyHtml(): string {
-    return editorRef.current?.innerHTML ?? "";
+    return editorRef.current?.innerHTML || draftHtml;
+  }
+
+  function captureDraft(): string {
+    const html = editorRef.current?.innerHTML || draftHtml;
+    setDraftHtml(html);
+    return html;
   }
 
   function loadTemplate(templateId: string) {
@@ -104,6 +99,7 @@ export function BulkEmailComposer({
     const template = initialTemplates.find((t) => t.id === templateId);
     if (!template) return;
     if (template.subject) setSubject(template.subject);
+    setDraftHtml(template.htmlBody);
     if (editorRef.current) {
       editorRef.current.innerHTML = template.htmlBody;
     }
@@ -117,10 +113,11 @@ export function BulkEmailComposer({
   }
 
   async function loadPreview() {
+    const htmlBody = captureDraft();
     const res = await fetch("/api/admin/email/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ htmlBody: getBodyHtml() }),
+      body: JSON.stringify({ htmlBody }),
     });
     if (res.ok) {
       const data = (await res.json()) as { html: string };
@@ -215,13 +212,14 @@ export function BulkEmailComposer({
           </button>
         </div>
 
-        {view === "edit" ? (
+        <div className={view === "edit" ? "block" : "hidden"}>
           <EmailHtmlEditor
             editorRef={editorRef}
             colors={colors}
-            defaultHtml={initialBody}
+            defaultHtml={draftHtml}
           />
-        ) : (
+        </div>
+        {view === "preview" && (
           <iframe
             title="Email preview"
             srcDoc={previewHtml}

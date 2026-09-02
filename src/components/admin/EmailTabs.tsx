@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/admin/email", label: "Compose", exact: true },
   { href: "/admin/email/templates", label: "Templates", exact: false },
+  { href: "/admin/email/sent", label: "Sent", exact: false },
 ] as const;
 
 export function EmailTabs() {
