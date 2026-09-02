@@ -26,6 +26,7 @@ import {
 } from "@/lib/shipping/config";
 import { listPackagePresets } from "@/lib/shipping/packages";
 import {
+  isComplimentaryOrder,
   isManualOrder,
   parseOrderTab,
   shouldShowShippingPanel,
@@ -34,7 +35,7 @@ import {
 
 type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; previewInvoice?: string }>;
 };
 
 function backHref(from?: string): string {
@@ -53,7 +54,7 @@ export default async function AdminOrderDetailPage({
   searchParams,
 }: OrderDetailPageProps) {
   const { id } = await params;
-  const { from } = await searchParams;
+  const { from, previewInvoice } = await searchParams;
   const fromTab = parseOrderTab(from);
   const fromQuery = fromTab === "all" ? "" : fromTab;
 
@@ -107,9 +108,11 @@ export default async function AdminOrderDetailPage({
               label={fulfillment.label}
               variant={fulfillment.variant}
             />
-            {isManualOrder(order.stripeSessionId) && (
+            {isComplimentaryOrder(order.stripeSessionId) ? (
+              <span className="text-xs text-gray-500">Complimentary</span>
+            ) : isManualOrder(order.stripeSessionId) ? (
               <span className="text-xs text-gray-500">Manual</span>
-            )}
+            ) : null}
           </div>
           <p className="text-sm text-gray-500">
             {formatOrderDate(order.createdAt)} from{" "}
@@ -131,6 +134,7 @@ export default async function AdminOrderDetailPage({
             hasLabel={Boolean(order.labelUrl)}
             invoiceHostedUrl={order.invoiceHostedUrl}
             invoiceSentAt={order.invoiceSentAt?.toISOString() ?? null}
+            autoOpenPreview={previewInvoice === "1"}
             variant="toolbar"
           />
         </div>

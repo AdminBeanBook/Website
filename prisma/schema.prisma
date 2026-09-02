@@ -24,15 +24,23 @@ model EmailSettings {
 }
 
 model Contact {
-  id        String       @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  notes     String?
-  active    Boolean      @default(true)
-  tags      ContactTag[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  notes          String?
+  active         Boolean      @default(true)
+  taxExempt      Boolean      @default(false)
+  addressName    String?
+  addressLine1   String?
+  addressLine2   String?
+  addressCity    String?
+  addressState   String?
+  addressPostal  String?
+  addressCountry String?      @default("US")
+  tags           ContactTag[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model ContactTag {

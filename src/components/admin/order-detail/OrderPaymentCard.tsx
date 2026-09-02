@@ -8,7 +8,7 @@ import {
 import { BEAN_BOOK_2026 } from "@/lib/products";
 
 type OrderPaymentCardProps = {
-  order: Pick<Order, "amountCents" | "discountCents" | "discountCode" | "status">;
+  order: Pick<Order, "amountCents" | "discountCents" | "discountCode" | "status" | "stripeSessionId">;
 };
 
 export function OrderPaymentCard({ order }: OrderPaymentCardProps) {

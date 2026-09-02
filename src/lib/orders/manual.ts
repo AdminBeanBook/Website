@@ -1,6 +1,7 @@
 import { upsertContactFromCustomer } from "@/lib/contacts/from-customer";
 import { prisma } from "@/lib/db";
 import { sendStripeInvoiceForOrder } from "@/lib/orders/invoice";
+import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
 import { resolveProduct } from "@/lib/products";
 
 export type CreateManualOrderInput = {
@@ -18,6 +19,7 @@ export type CreateManualOrderInput = {
   shippingCountry?: string;
   notes?: string;
   sendInvoice?: boolean;
+  complimentary?: boolean;
 };
 
 export async function createManualOrder(input: CreateManualOrderInput) {
@@ -26,9 +28,25 @@ export async function createManualOrder(input: CreateManualOrderInput) {
     throw new Error("Customer email is required");
   }
 
+  const complimentary = Boolean(input.complimentary);
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const product = await resolveProduct(input.productId);
-  const amountCents = product.priceCents * quantity;
+  const listCents = product.priceCents * quantity;
+
+  if (complimentary) {
+    const shipReady = Boolean(
+      input.shippingName?.trim() &&
+        input.shippingLine1?.trim() &&
+        input.shippingCity?.trim() &&
+        input.shippingState?.trim() &&
+        input.shippingPostal?.trim(),
+    );
+    if (!shipReady) {
+      throw new Error(
+        "Complimentary orders need a complete shipping address so you can mail the book",
+      );
+    }
+  }
 
   const customer = await prisma.customer.upsert({
     where: { email },
@@ -47,13 +65,26 @@ export async function createManualOrder(input: CreateManualOrderInput) {
     email,
     name: customer.name,
     phone: customer.phone,
+    address: {
+      addressName: input.shippingName,
+      addressLine1: input.shippingLine1,
+      addressLine2: input.shippingLine2,
+      addressCity: input.shippingCity,
+      addressState: input.shippingState,
+      addressPostal: input.shippingPostal,
+      addressCountry: input.shippingCountry,
+    },
   });
 
   const order = await prisma.order.create({
     data: {
-      stripeSessionId: `manual_${crypto.randomUUID()}`,
-      status: "unpaid",
-      amountCents,
+      stripeSessionId: complimentary
+        ? `manual_comp_${crypto.randomUUID()}`
+        : `manual_${crypto.randomUUID()}`,
+      status: complimentary ? "paid" : "unpaid",
+      amountCents: complimentary ? 0 : listCents,
+      discountCents: complimentary ? listCents : 0,
+      discountCode: complimentary ? "COMPLIMENTARY" : null,
       productId: product.id,
       customerId: customer.id,
       customerEmail: email,
@@ -69,6 +100,11 @@ export async function createManualOrder(input: CreateManualOrderInput) {
       notes: input.notes?.trim() || null,
     },
   });
+
+  if (complimentary) {
+    void notifyNewOrderEmail(order);
+    return order;
+  }
 
   if (input.sendInvoice) {
     const invoiced = await sendStripeInvoiceForOrder(order.id);

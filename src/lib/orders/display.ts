@@ -2,6 +2,7 @@ import type { Order } from "@prisma/client";
 import { BEAN_BOOK_2026 } from "@/lib/products";
 import { getShipFromAddress } from "@/lib/shipping/config";
 import {
+  isComplimentaryOrder,
   isManualOrder,
   isUnfulfilled,
   isUnpaid,
@@ -13,15 +14,18 @@ export function formatOrderNumber(sequence: number): string {
 }
 
 export function getLineItemQuantity(
-  order: Pick<Order, "amountCents">,
+  order: Pick<Order, "amountCents"> & { discountCents?: number | null },
 ): number {
   const unit = BEAN_BOOK_2026.priceCents;
   if (unit <= 0) return 1;
-  if (order.amountCents % unit === 0) {
-    const q = order.amountCents / unit;
+  const basis =
+    order.amountCents > 0 ? order.amountCents : (order.discountCents ?? 0);
+  if (basis <= 0) return 1;
+  if (basis % unit === 0) {
+    const q = basis / unit;
     return q >= 1 ? q : 1;
   }
-  return Math.max(1, Math.round(order.amountCents / unit));
+  return Math.max(1, Math.round(basis / unit));
 }
 
 export type BadgeVariant = "success" | "warning" | "neutral" | "info";
@@ -45,8 +49,11 @@ export function getFulfillmentBadge(
 }
 
 export function getPaymentBadge(
-  order: Pick<Order, "status">,
+  order: Pick<Order, "status" | "stripeSessionId">,
 ): { label: string; variant: BadgeVariant } {
+  if (isComplimentaryOrder(order.stripeSessionId)) {
+    return { label: "Complimentary", variant: "info" };
+  }
   if (isUnpaid(order.status)) {
     return { label: "Unpaid", variant: "warning" };
   }
@@ -56,6 +63,7 @@ export function getPaymentBadge(
 }
 
 export function orderSourceLabel(stripeSessionId: string): string {
+  if (isComplimentaryOrder(stripeSessionId)) return "Complimentary order";
   return isManualOrder(stripeSessionId) ? "Manual order" : "Online Store";
 }
 

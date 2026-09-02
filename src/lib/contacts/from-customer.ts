@@ -1,3 +1,8 @@
+import {
+  addressFromShipping,
+  normalizeContactAddress,
+  type ContactAddress,
+} from "@/lib/contacts/address";
 import { prisma } from "@/lib/db";
 
 const CUSTOMER_TAG_SLUG = "customer";
@@ -6,6 +11,7 @@ export type CustomerContactInput = {
   email: string;
   name?: string | null;
   phone?: string | null;
+  address?: Partial<ContactAddress> | null;
 };
 
 async function ensureCustomerTag() {
@@ -20,9 +26,30 @@ async function ensureCustomerTag() {
   });
 }
 
+export async function latestOrderAddressForEmail(email: string) {
+  const order = await prisma.order.findFirst({
+    where: {
+      customerEmail: { equals: email, mode: "insensitive" },
+      NOT: { OR: [{ shippingLine1: null }, { shippingLine1: "" }] },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      shippingName: true,
+      shippingLine1: true,
+      shippingLine2: true,
+      shippingCity: true,
+      shippingState: true,
+      shippingPostal: true,
+      shippingCountry: true,
+    },
+  });
+  return addressFromShipping(order);
+}
+
 /**
  * Upsert a Contact for a Customer email so buyers appear in Contacts.
  * Matches by email (case-insensitive). Tags with the "Customer" tag.
+ * Copies shipping address from the order when provided, or the latest order.
  */
 export async function upsertContactFromCustomer(
   input: CustomerContactInput,
@@ -34,6 +61,7 @@ export async function upsertContactFromCustomer(
   const name =
     input.name?.trim() || email.split("@")[0] || email;
   const phone = input.phone?.trim() || null;
+  const incoming = normalizeContactAddress(input.address);
 
   const existing = await prisma.contact.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
@@ -42,6 +70,11 @@ export async function upsertContactFromCustomer(
 
   if (existing) {
     const hasTag = existing.tags.some((t) => t.id === tag.id);
+    const address =
+      incoming ??
+      (existing.addressLine1?.trim()
+        ? null
+        : await latestOrderAddressForEmail(email));
     return prisma.contact.update({
       where: { id: existing.id },
       data: {
@@ -49,17 +82,20 @@ export async function upsertContactFromCustomer(
         name: input.name?.trim() || existing.name,
         phone: phone || existing.phone,
         email,
+        ...(address ?? {}),
         ...(!hasTag ? { tags: { connect: { id: tag.id } } } : {}),
       },
     });
   }
 
+  const address = incoming ?? (await latestOrderAddressForEmail(email));
   return prisma.contact.create({
     data: {
       name,
       email,
       phone,
       active: true,
+      ...(address ?? {}),
       tags: { connect: { id: tag.id } },
     },
   });
@@ -72,7 +108,6 @@ export async function syncAllCustomersToContacts() {
     orderBy: { createdAt: "asc" },
   });
 
-  const emails = customers.map((c) => c.email.toLowerCase());
   const existingContacts = await prisma.contact.findMany({
     where: { email: { not: null } },
     include: { tags: { select: { id: true } } },
@@ -93,6 +128,7 @@ export async function syncAllCustomersToContacts() {
     const name =
       customer.name?.trim() || email.split("@")[0] || email;
     const phone = customer.phone?.trim() || null;
+    const address = await latestOrderAddressForEmail(email);
 
     if (existing) {
       const hasTag = existing.tags.some((t) => t.id === tag.id);
@@ -103,6 +139,7 @@ export async function syncAllCustomersToContacts() {
           name: customer.name?.trim() || existing.name,
           phone: phone || existing.phone,
           email,
+          ...(address && !existing.addressLine1?.trim() ? address : {}),
           ...(!hasTag ? { tags: { connect: { id: tag.id } } } : {}),
         },
       });
@@ -116,6 +153,7 @@ export async function syncAllCustomersToContacts() {
         email,
         phone,
         active: true,
+        ...(address ?? {}),
         tags: { connect: { id: tag.id } },
       },
       include: { tags: { select: { id: true } } },

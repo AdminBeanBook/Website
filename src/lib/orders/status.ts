@@ -110,3 +110,8 @@ export function statusLabel(status: string): string {
 export function isManualOrder(stripeSessionId: string): boolean {
   return stripeSessionId.startsWith("manual_");
 }
+
+/** Free gift / promised book — never invoiced, ready to ship. */
+export function isComplimentaryOrder(stripeSessionId: string): boolean {
+  return stripeSessionId.startsWith("manual_comp_");
+}

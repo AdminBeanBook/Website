@@ -59,6 +59,15 @@ export async function saveOrderFromStripeSession(
     email,
     name: customer.name,
     phone: customer.phone,
+    address: {
+      addressName: shipping?.name ?? null,
+      addressLine1: address?.line1 ?? null,
+      addressLine2: address?.line2 ?? null,
+      addressCity: address?.city ?? null,
+      addressState: address?.state ?? null,
+      addressPostal: address?.postal_code ?? null,
+      addressCountry: address?.country ?? "US",
+    },
   });
 
   const order = await prisma.order.create({

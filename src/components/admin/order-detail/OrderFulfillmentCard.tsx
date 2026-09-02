@@ -17,6 +17,7 @@ type OrderFulfillmentCardProps = {
     | "id"
     | "status"
     | "amountCents"
+    | "discountCents"
     | "labelUrl"
     | "shippedAt"
     | "carrier"

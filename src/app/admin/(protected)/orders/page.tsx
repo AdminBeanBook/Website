@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CreateManualOrderForm } from "@/components/admin/CreateManualOrderForm";
-import { OrderListRow } from "@/components/admin/OrderListRow";
+import { OrderList } from "@/components/admin/OrderList";
 import { OrderTabs } from "@/components/admin/OrderTabs";
 import { StripeSetupBanner } from "@/components/admin/StripeSetupBanner";
 import { prisma } from "@/lib/db";
@@ -88,24 +88,15 @@ export default async function AdminOrdersPage({ searchParams }: OrdersPageProps)
       ) : orders.length === 0 ? (
         <p className="text-gray-500">{emptyMessage(activeTab)}</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-          <div className="hidden border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:grid sm:grid-cols-[7rem_minmax(0,1fr)_5rem_5.5rem_auto] sm:gap-x-4">
-            <span>Date</span>
-            <span>Customer</span>
-            <span className="text-right">Total</span>
-            <span>Status</span>
-            <span className="text-right">Notes</span>
-          </div>
-          <div role="list">
-            {orders.map((order) => (
-              <OrderListRow
-                key={order.id}
-                order={order}
-                fromTab={activeTab}
-              />
-            ))}
-          </div>
-        </div>
+        <OrderList
+          key={activeTab}
+          fromTab={activeTab}
+          orders={orders.map((order) => ({
+            ...order,
+            createdAt: order.createdAt.toISOString(),
+            invoiceSentAt: order.invoiceSentAt?.toISOString() ?? null,
+          }))}
+        />
       )}
 
       {!isCreateTab(activeTab) && activeTab !== "all" && orders.length > 0 && (

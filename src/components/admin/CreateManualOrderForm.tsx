@@ -3,9 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AdminDraftTopBar } from "@/components/admin/draft/AdminDraftTopBar";
 import { DraftSidebarCard } from "@/components/admin/draft/DraftSidebarCard";
+import {
+  ContactSuggestInput,
+  joinContactName,
+  splitContactName,
+  type ContactSuggestion,
+} from "@/components/admin/ContactSuggestInput";
 import type { CatalogProduct } from "@/lib/products";
 import { formatMoney } from "@/lib/orders/display";
 
@@ -20,7 +26,8 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
   const defaultProduct = products[0];
   const [productId, setProductId] = useState(defaultProduct?.id ?? "");
   const [customerEmail, setCustomerEmail] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [shippingName, setShippingName] = useState("");
@@ -30,22 +37,85 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
   const [shippingState, setShippingState] = useState("");
   const [shippingPostal, setShippingPostal] = useState("");
   const [notes, setNotes] = useState("");
-  const [sendInvoice, setSendInvoice] = useState(true);
+  const [paymentMode, setPaymentMode] = useState<"invoice" | "complimentary">(
+    "invoice",
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailTaxExempt, setEmailTaxExempt] = useState(false);
 
   const product = useMemo(
     () => products.find((p) => p.id === productId) ?? defaultProduct,
     [products, productId, defaultProduct],
   );
 
+  const complimentary = paymentMode === "complimentary";
+  const customerName = joinContactName(firstName, lastName);
   const subtotalCents = (product?.priceCents ?? 0) * quantity;
+  const totalCents = complimentary ? 0 : subtotalCents;
+  const shipReady = Boolean(
+    shippingName.trim() &&
+      shippingLine1.trim() &&
+      shippingCity.trim() &&
+      shippingState.trim() &&
+      shippingPostal.trim(),
+  );
+
+  useEffect(() => {
+    const email = customerEmail.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setEmailTaxExempt(false);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      const res = await fetch(
+        `/api/admin/contacts?email=${encodeURIComponent(email)}`,
+      );
+      if (!res.ok) return;
+      const list = (await res.json()) as { taxExempt?: boolean }[];
+      setEmailTaxExempt(Boolean(list[0]?.taxExempt));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [customerEmail]);
+
+  function applyContact(contact: ContactSuggestion) {
+    const parts = splitContactName(contact.name);
+    setFirstName(parts.first);
+    setLastName(parts.last);
+    if (contact.email) setCustomerEmail(contact.email);
+    if (contact.phone) setCustomerPhone(contact.phone);
+    setEmailTaxExempt(Boolean(contact.taxExempt));
+    if (contact.addressLine1?.trim()) {
+      setShippingName(contact.addressName?.trim() || contact.name);
+      setShippingLine1(contact.addressLine1);
+      setShippingLine2(contact.addressLine2 ?? "");
+      setShippingCity(contact.addressCity ?? "");
+      setShippingState(contact.addressState ?? "");
+      setShippingPostal(contact.addressPostal ?? "");
+    } else if (!shippingName.trim()) {
+      setShippingName(contact.name);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!product) return;
     setLoading(true);
     setError(null);
+
+    if (complimentary) {
+      const missingShip =
+        !shippingName.trim() ||
+        !shippingLine1.trim() ||
+        !shippingCity.trim() ||
+        !shippingState.trim() ||
+        !shippingPostal.trim();
+      if (missingShip) {
+        setError("Add a complete shipping address so you can mail the book.");
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const res = await fetch("/api/admin/orders", {
@@ -64,7 +134,8 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
           shippingState: shippingState || undefined,
           shippingPostal: shippingPostal || undefined,
           notes: notes || undefined,
-          sendInvoice,
+          sendInvoice: false,
+          complimentary,
         }),
       });
       const data = (await res.json()) as { error?: string; id?: string };
@@ -73,9 +144,17 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
       }
 
       if (data.id) {
-        router.push(`/admin/orders/${data.id}?from=unpaid`);
+        router.push(
+          complimentary
+            ? `/admin/orders/${data.id}?from=unfulfilled`
+            : `/admin/orders/${data.id}?from=unpaid&previewInvoice=1`,
+        );
       } else {
-        router.push("/admin/orders?tab=unpaid");
+        router.push(
+          complimentary
+            ? "/admin/orders?tab=unfulfilled"
+            : "/admin/orders?tab=unpaid",
+        );
       }
       router.refresh();
     } catch (err) {
@@ -103,11 +182,15 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
     <div className="space-y-4">
       <AdminDraftTopBar
         title="Unsaved draft order"
-        discardHref="/admin/orders?tab=unpaid"
+        discardHref={
+          complimentary ? "/admin/orders?tab=unfulfilled" : "/admin/orders?tab=unpaid"
+        }
         formId={FORM_ID}
-        saveLabel={sendInvoice ? "Save & send invoice" : "Save order"}
+        saveLabel={
+          complimentary ? "Save & ready to ship" : "Save & preview invoice"
+        }
         saving={loading}
-        saveDisabled={!customerEmail.trim()}
+        saveDisabled={!customerEmail.trim() || (complimentary && !shipReady)}
         extraActions={
           <Link
             href="/admin/settings/products/create"
@@ -187,26 +270,51 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
                     {formatMoney(subtotalCents)}
                   </dd>
                 </div>
+                {complimentary && (
+                  <div className="flex justify-between px-5 py-2.5">
+                    <dt className="text-gray-600">Complimentary</dt>
+                    <dd className="tabular-nums font-medium text-emerald-800">
+                      −{formatMoney(subtotalCents)}
+                    </dd>
+                  </div>
+                )}
                 <div className="flex justify-between px-5 py-3 text-base font-semibold">
                   <dt>Total</dt>
-                  <dd className="tabular-nums">{formatMoney(subtotalCents)}</dd>
+                  <dd className="tabular-nums">{formatMoney(totalCents)}</dd>
                 </div>
               </dl>
-              <div className="border-t border-gray-100 px-5 py-4">
+              <fieldset className="space-y-3 border-t border-gray-100 px-5 py-4">
+                <legend className="sr-only">Payment type</legend>
                 <label className="flex items-start gap-2 text-sm text-gray-700">
                   <input
-                    type="checkbox"
-                    checked={sendInvoice}
-                    onChange={(e) => setSendInvoice(e.target.checked)}
+                    type="radio"
+                    name="payment-mode"
+                    checked={paymentMode === "invoice"}
+                    onChange={() => setPaymentMode("invoice")}
                     className="mt-0.5"
                   />
                   <span>
-                    <strong>Payment due later</strong> — email a Stripe invoice
-                    after saving (due in 30 days). You can ship before payment from
-                    the Unpaid tab.
+                    <strong>Invoice shop</strong> — you’ll preview the Stripe
+                    invoice before it is emailed (due in 30 days). Use this for
+                    shops. You can still ship from the Unpaid tab before they
+                    pay.
                   </span>
                 </label>
-              </div>
+                <label className="flex items-start gap-2 text-sm text-gray-700">
+                  <input
+                    type="radio"
+                    name="payment-mode"
+                    checked={paymentMode === "complimentary"}
+                    onChange={() => setPaymentMode("complimentary")}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <strong>Complimentary</strong> — no charge and no invoice.
+                    Use this when you promised a free book. The order goes to
+                    Unfulfilled so you can buy a label and ship.
+                  </span>
+                </label>
+              </fieldset>
               <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
                 Use <strong>Save</strong> in the top bar to create this order.
               </p>
@@ -232,29 +340,47 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
 
             <DraftSidebarCard title="Customer">
               <div className="space-y-3">
-                <div>
-                  <label htmlFor="co-email" className="mb-1 block text-xs text-gray-500">
-                    Email <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="co-email"
-                    type="email"
-                    required
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="Search or create a customer"
+                <ContactSuggestInput
+                  id="co-email"
+                  label="Email"
+                  required
+                  type="email"
+                  value={customerEmail}
+                  placeholder="Search contacts or type an email"
+                  autoComplete="off"
+                  className={inputClass}
+                  query={customerEmail}
+                  onChange={setCustomerEmail}
+                  onSelect={applyContact}
+                />
+                {emailTaxExempt && (
+                  <p className="-mt-1 text-xs text-emerald-800">
+                    This contact is tax exempt. The invoice will not add sales
+                    tax.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <ContactSuggestInput
+                    id="co-first"
+                    label="First name"
+                    value={firstName}
+                    placeholder="First"
+                    autoComplete="off"
                     className={inputClass}
+                    query={firstName}
+                    onChange={setFirstName}
+                    onSelect={applyContact}
                   />
-                </div>
-                <div>
-                  <label htmlFor="co-name" className="mb-1 block text-xs text-gray-500">
-                    Name
-                  </label>
-                  <input
-                    id="co-name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                  <ContactSuggestInput
+                    id="co-last"
+                    label="Last name"
+                    value={lastName}
+                    placeholder="Last"
+                    autoComplete="off"
                     className={inputClass}
+                    query={lastName}
+                    onChange={setLastName}
+                    onSelect={applyContact}
                   />
                 </div>
                 <div>
@@ -274,16 +400,24 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
 
             <DraftSidebarCard title="Shipping address">
               <div className="space-y-2">
+                {complimentary && (
+                  <p className="text-xs text-gray-500">
+                    Required for complimentary orders so you can buy a shipping
+                    label.
+                  </p>
+                )}
                 <input
                   placeholder="Recipient name"
                   value={shippingName}
                   onChange={(e) => setShippingName(e.target.value)}
+                  required={complimentary}
                   className={inputClass}
                 />
                 <input
                   placeholder="Street address"
                   value={shippingLine1}
                   onChange={(e) => setShippingLine1(e.target.value)}
+                  required={complimentary}
                   className={inputClass}
                 />
                 <input
@@ -297,12 +431,14 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
                     placeholder="City"
                     value={shippingCity}
                     onChange={(e) => setShippingCity(e.target.value)}
+                    required={complimentary}
                     className={inputClass}
                   />
                   <input
                     placeholder="State"
                     value={shippingState}
                     onChange={(e) => setShippingState(e.target.value)}
+                    required={complimentary}
                     className={inputClass}
                   />
                 </div>
@@ -310,6 +446,7 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
                   placeholder="ZIP"
                   value={shippingPostal}
                   onChange={(e) => setShippingPostal(e.target.value)}
+                  required={complimentary}
                   className={inputClass}
                 />
               </div>

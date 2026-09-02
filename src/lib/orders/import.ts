@@ -512,6 +512,15 @@ export async function importOrders(
         email: customer.email,
         name: customer.name,
         phone: customer.phone,
+        address: {
+          addressName: row.shippingName,
+          addressLine1: row.shippingLine1,
+          addressLine2: row.shippingLine2,
+          addressCity: row.shippingCity,
+          addressState: row.shippingState,
+          addressPostal: row.shippingPostal,
+          addressCountry: row.shippingCountry,
+        },
       });
 
       await prisma.order.create({

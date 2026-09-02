@@ -5,6 +5,7 @@ import { useState } from "react";
 import { OrderStatusForm } from "@/components/admin/OrderStatusForm";
 import { SendInvoiceButton } from "@/components/admin/SendInvoiceButton";
 import {
+  isComplimentaryOrder,
   isManualOrder,
   isUnpaid,
   normalizeOrderStatus,
@@ -20,6 +21,7 @@ type OrderActionsProps = {
   invoiceHostedUrl?: string | null;
   invoiceSentAt?: string | null;
   variant?: "sidebar" | "toolbar";
+  autoOpenPreview?: boolean;
 };
 
 export function OrderActions({
@@ -31,6 +33,7 @@ export function OrderActions({
   invoiceHostedUrl,
   invoiceSentAt,
   variant = "sidebar",
+  autoOpenPreview = false,
 }: OrderActionsProps) {
   const router = useRouter();
   const [markingPaid, setMarkingPaid] = useState(false);
@@ -48,21 +51,22 @@ export function OrderActions({
     router.refresh();
   }
 
-  const toolbarBtn =
-    "rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60";
+  const complimentary = isComplimentaryOrder(stripeSessionId);
+  const canInvoice = isUnpaid(status) && !complimentary;
   const primaryToolbarBtn =
     "rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60";
 
   if (variant === "toolbar") {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        {isUnpaid(status) && (
+        {canInvoice && (
           <>
             <SendInvoiceButton
               orderId={orderId}
               invoiceHostedUrl={invoiceHostedUrl}
               invoiceSentAt={invoiceSentAt}
               compact
+              autoOpenPreview={autoOpenPreview}
             />
             <button
               type="button"
@@ -88,25 +92,28 @@ export function OrderActions({
     <div className="flex min-w-[200px] flex-col gap-2">
       <span
         className={`inline-flex w-fit rounded px-2 py-0.5 text-xs font-medium ${
-          normalized === "unpaid"
-            ? "bg-amber-100 text-amber-900"
-            : normalized === "paid"
-              ? "bg-blue-100 text-blue-900"
-              : normalized === "archived"
-                ? "bg-gray-100 text-gray-700"
-                : "bg-gray-100 text-gray-600"
+          complimentary
+            ? "bg-emerald-100 text-emerald-900"
+            : normalized === "unpaid"
+              ? "bg-amber-100 text-amber-900"
+              : normalized === "paid"
+                ? "bg-blue-100 text-blue-900"
+                : normalized === "archived"
+                  ? "bg-gray-100 text-gray-700"
+                  : "bg-gray-100 text-gray-600"
         }`}
       >
-        {statusLabel(status)}
-        {isManualOrder(stripeSessionId) && " · Manual"}
+        {complimentary ? "Complimentary" : statusLabel(status)}
+        {!complimentary && isManualOrder(stripeSessionId) ? " · Manual" : ""}
       </span>
 
-      {isUnpaid(status) && (
+      {canInvoice && (
         <>
           <SendInvoiceButton
             orderId={orderId}
             invoiceHostedUrl={invoiceHostedUrl}
             invoiceSentAt={invoiceSentAt}
+            autoOpenPreview={autoOpenPreview}
           />
           <button
             type="button"

@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { SettingsSidebar } from "@/components/admin/SettingsSidebar";
 
 export function SettingsLayoutClient({
   children,
@@ -19,10 +18,5 @@ export function SettingsLayoutClient({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-      <SettingsSidebar />
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
+  return <div className="min-w-0">{children}</div>;
 }

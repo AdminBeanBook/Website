@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { formatContactAddress } from "@/lib/contacts/address";
 import type { ContactRow, ContactTagRow } from "@/lib/contacts/types";
 
 type ContactsManagerProps = {
@@ -10,8 +11,98 @@ type ContactsManagerProps = {
   initialTags: ContactTagRow[];
 };
 
+const CONTACT_CSV_TEMPLATE = [
+  "Name,Email,Phone,Street,Apt,City,State,ZIP",
+  "Jane Doe,jane@example.com,555-0100,123 Main St,Apt 4,Denver,CO,80202",
+].join("\n");
+
 const inputClass =
   "w-full rounded border border-gray-300 px-2 py-1.5 text-sm";
+
+type AddressFormValue = {
+  addressName: string;
+  addressLine1: string;
+  addressLine2: string;
+  addressCity: string;
+  addressState: string;
+  addressPostal: string;
+};
+
+const EMPTY_ADDRESS: AddressFormValue = {
+  addressName: "",
+  addressLine1: "",
+  addressLine2: "",
+  addressCity: "",
+  addressState: "",
+  addressPostal: "",
+};
+
+function addressFromContact(contact: ContactRow): AddressFormValue {
+  return {
+    addressName: contact.addressName ?? "",
+    addressLine1: contact.addressLine1 ?? "",
+    addressLine2: contact.addressLine2 ?? "",
+    addressCity: contact.addressCity ?? "",
+    addressState: contact.addressState ?? "",
+    addressPostal: contact.addressPostal ?? "",
+  };
+}
+
+function AddressFields({
+  value,
+  onChange,
+}: {
+  value: AddressFormValue;
+  onChange: (next: AddressFormValue) => void;
+}) {
+  function setField(key: keyof AddressFormValue, next: string) {
+    onChange({ ...value, [key]: next });
+  }
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-xs font-medium text-gray-600">Shipping address</p>
+      <input
+        value={value.addressName}
+        onChange={(e) => setField("addressName", e.target.value)}
+        placeholder="Recipient name"
+        className={inputClass}
+      />
+      <input
+        value={value.addressLine1}
+        onChange={(e) => setField("addressLine1", e.target.value)}
+        placeholder="Street address"
+        className={inputClass}
+      />
+      <input
+        value={value.addressLine2}
+        onChange={(e) => setField("addressLine2", e.target.value)}
+        placeholder="Apt / suite"
+        className={inputClass}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          value={value.addressCity}
+          onChange={(e) => setField("addressCity", e.target.value)}
+          placeholder="City"
+          className={inputClass}
+        />
+        <input
+          value={value.addressState}
+          onChange={(e) => setField("addressState", e.target.value)}
+          placeholder="State"
+          className={inputClass}
+        />
+      </div>
+      <input
+        value={value.addressPostal}
+        onChange={(e) => setField("addressPostal", e.target.value)}
+        placeholder="ZIP"
+        className={`${inputClass} max-w-xs`}
+      />
+    </div>
+  );
+}
 
 export function ContactsManager({
   initialContacts,
@@ -26,11 +117,37 @@ export function ContactsManager({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [taxExempt, setTaxExempt] = useState(false);
+  const [address, setAddress] = useState<AddressFormValue>(EMPTY_ADDRESS);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [bulkPaste, setBulkPaste] = useState("");
   const [bulkTagId, setBulkTagId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  async function reloadContacts() {
+    const listRes = await fetch(
+      filterTagId
+        ? `/api/admin/contacts?tagId=${filterTagId}`
+        : "/api/admin/contacts",
+    );
+    if (!listRes.ok) return;
+    const list = (await listRes.json()) as ContactRow[];
+    setContacts(
+      list.map((c) => ({
+        ...c,
+        createdAt:
+          typeof c.createdAt === "string"
+            ? c.createdAt
+            : new Date(c.createdAt).toISOString(),
+        updatedAt:
+          typeof c.updatedAt === "string"
+            ? c.updatedAt
+            : new Date(c.updatedAt).toISOString(),
+      })),
+    );
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -44,6 +161,9 @@ export function ContactsManager({
         (c.email?.toLowerCase().includes(q) ?? false) ||
         (c.phone?.toLowerCase().includes(q) ?? false) ||
         (c.notes?.toLowerCase().includes(q) ?? false) ||
+        (c.addressLine1?.toLowerCase().includes(q) ?? false) ||
+        (c.addressCity?.toLowerCase().includes(q) ?? false) ||
+        (c.addressPostal?.toLowerCase().includes(q) ?? false) ||
         c.tags.some((t) => t.name.toLowerCase().includes(q))
       );
     });
@@ -68,6 +188,8 @@ export function ContactsManager({
         email: email || undefined,
         phone: phone || undefined,
         notes: notes || undefined,
+        taxExempt,
+        ...address,
         tagIds: selectedTagIds,
       }),
     });
@@ -91,6 +213,8 @@ export function ContactsManager({
     setEmail("");
     setPhone("");
     setNotes("");
+    setTaxExempt(false);
+    setAddress(EMPTY_ADDRESS);
     setSelectedTagIds([]);
     setMessage("Contact added");
     router.refresh();
@@ -113,30 +237,57 @@ export function ContactsManager({
       setMessage(data.error ?? "Import failed");
       return;
     }
-    const listRes = await fetch(
-      filterTagId
-        ? `/api/admin/contacts?tagId=${filterTagId}`
-        : "/api/admin/contacts",
-    );
-    if (listRes.ok) {
-      const list = (await listRes.json()) as ContactRow[];
-      setContacts(
-        list.map((c) => ({
-          ...c,
-          createdAt:
-            typeof c.createdAt === "string"
-              ? c.createdAt
-              : new Date(c.createdAt).toISOString(),
-          updatedAt:
-            typeof c.updatedAt === "string"
-              ? c.updatedAt
-              : new Date(c.updatedAt).toISOString(),
-        })),
-      );
-    }
+    await reloadContacts();
     setBulkPaste("");
     setMessage("Emails imported as contacts");
     router.refresh();
+  }
+
+  async function importCsvFile(file: File) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+      setMessage(
+        "Save from Excel as CSV UTF-8 (Comma delimited), then upload the .csv file.",
+      );
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    const csv = await file.text();
+    const res = await fetch("/api/admin/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        csv,
+        defaultTagId: bulkTagId || undefined,
+      }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (csvInputRef.current) csvInputRef.current.value = "";
+    if (!res.ok) {
+      setMessage(data.error ?? "CSV import failed");
+      return;
+    }
+    await reloadContacts();
+    setMessage(
+      `Imported ${data.created ?? 0} new, updated ${data.updated ?? 0}${
+        data.skipped ? `, skipped ${data.skipped}` : ""
+      }`,
+    );
+    router.refresh();
+  }
+
+  function downloadCsvTemplate() {
+    const blob = new Blob([CONTACT_CSV_TEMPLATE], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "contacts-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   async function updateContact(
@@ -243,8 +394,9 @@ export function ContactsManager({
               Import customers
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Copy everyone from Customers into Contacts (tagged “Customer”).
-              New orders sync automatically going forward.
+              Copy everyone from Customers into Contacts (tagged “Customer”),
+              including the latest shipping address from their orders. New
+              orders sync automatically going forward.
             </p>
           </div>
           <button
@@ -295,6 +447,18 @@ export function ContactsManager({
               className={inputClass}
             />
           </div>
+          <AddressFields value={address} onChange={setAddress} />
+          <div className="flex items-end sm:col-span-2">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={taxExempt}
+                onChange={(e) => setTaxExempt(e.target.checked)}
+                className="rounded"
+              />
+              Tax exempt — no sales tax on invoices (typical for shops)
+            </label>
+          </div>
           {tags.length > 0 && (
             <div className="sm:col-span-2">
               <p className="text-xs font-medium text-gray-600">Tags</p>
@@ -333,10 +497,40 @@ export function ContactsManager({
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Import emails</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Import contacts</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Paste one email per line (or comma-separated). Optional tag applies to
-          all imports.
+          Upload a <strong>plain CSV</strong> (not an Excel workbook). In Excel:
+          File → Save As → <strong>CSV UTF-8 (Comma delimited)</strong>. That is
+          the same as a normal .csv file. Columns can be Name, Email, Phone,
+          Street, Apt, City, State, ZIP — first/last name also work.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              className="sr-only"
+              disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void importCsvFile(file);
+              }}
+            />
+            Upload CSV
+          </label>
+          <button
+            type="button"
+            onClick={downloadCsvTemplate}
+            className="text-sm text-brand-green hover:underline"
+          >
+            Download template
+          </button>
+        </div>
+        <p className="mt-4 text-sm font-medium text-gray-700">Or paste emails</p>
+        <p className="mt-1 text-sm text-gray-500">
+          One email per line (or comma-separated). Optional tag applies to CSV
+          and email imports.
         </p>
         <textarea
           value={bulkPaste}
@@ -383,7 +577,7 @@ export function ContactsManager({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, email, phone, notes, or tag…"
+              placeholder="Search by name, email, phone, address, notes, or tag…"
               className="min-w-[14rem] flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm sm:min-w-[18rem]"
             />
             {tags.length > 0 && (
@@ -452,11 +646,24 @@ function ContactRowEditor({
   const [email, setEmail] = useState(contact.email ?? "");
   const [phone, setPhone] = useState(contact.phone ?? "");
   const [tagIds, setTagIds] = useState(contact.tags.map((t) => t.id));
+  const [taxExempt, setTaxExempt] = useState(contact.taxExempt);
+  const [address, setAddress] = useState(() => addressFromContact(contact));
+  const addressLabel = formatContactAddress(contact);
 
   function toggleTag(id: string) {
     setTagIds((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
+  }
+
+  function startEdit() {
+    setName(contact.name);
+    setEmail(contact.email ?? "");
+    setPhone(contact.phone ?? "");
+    setTagIds(contact.tags.map((t) => t.id));
+    setTaxExempt(contact.taxExempt);
+    setAddress(addressFromContact(contact));
+    setEditing(true);
   }
 
   async function save() {
@@ -465,6 +672,9 @@ function ContactRowEditor({
       email: email || null,
       phone: phone || null,
       tagIds,
+      taxExempt,
+      ...address,
+      addressCountry: address.addressLine1.trim() ? "US" : null,
     });
     setEditing(false);
   }
@@ -478,12 +688,20 @@ function ContactRowEditor({
             {!contact.active && (
               <span className="ml-2 text-xs text-gray-400">(inactive)</span>
             )}
+            {contact.taxExempt && (
+              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900">
+                Tax exempt
+              </span>
+            )}
           </p>
           {contact.email && (
             <p className="text-sm text-gray-600">{contact.email}</p>
           )}
           {contact.phone && (
             <p className="text-sm text-gray-500">{contact.phone}</p>
+          )}
+          {addressLabel && (
+            <p className="text-sm text-gray-500">{addressLabel}</p>
           )}
           <div className="mt-2 flex flex-wrap gap-1">
             {contact.tags.map((tag) => (
@@ -500,7 +718,7 @@ function ContactRowEditor({
         <div className="flex flex-wrap gap-2 text-xs">
           <button
             type="button"
-            onClick={() => setEditing(true)}
+            onClick={startEdit}
             className="text-brand-green hover:underline"
           >
             Edit
@@ -544,6 +762,7 @@ function ContactRowEditor({
         className={inputClass}
         placeholder="Phone"
       />
+      <AddressFields value={address} onChange={setAddress} />
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => (
           <label
@@ -559,6 +778,15 @@ function ContactRowEditor({
           </label>
         ))}
       </div>
+      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={taxExempt}
+          onChange={(e) => setTaxExempt(e.target.checked)}
+          className="rounded"
+        />
+        Tax exempt
+      </label>
       <div className="flex gap-2">
         <button
           type="button"

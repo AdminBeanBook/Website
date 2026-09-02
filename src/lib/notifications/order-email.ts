@@ -66,10 +66,11 @@ export async function notifyNewOrderEmail(
     const who = order.customerName?.trim() || order.customerEmail;
     const adminUrl = `${siteOrigin()}/admin/orders/${order.id}`;
     const site = await getSiteConfig("published");
+    const complimentary = order.amountCents === 0;
 
     const bodyHtml = `
-      <p style="margin:0 0 1em;"><strong>New Bean Book order</strong></p>
-      <p style="margin:0 0 0.5em;">Amount: <strong>$${amount}</strong></p>
+      <p style="margin:0 0 1em;"><strong>${complimentary ? "Complimentary Bean Book order" : "New Bean Book order"}</strong></p>
+      <p style="margin:0 0 0.5em;">Amount: <strong>${complimentary ? "No charge" : `$${amount}`}</strong></p>
       <p style="margin:0 0 0.5em;">Customer: ${who}</p>
       <p style="margin:0 0 1em;">Email: ${order.customerEmail}</p>
       <p style="margin:0 0 1em;">Status: ${order.status}</p>
@@ -79,7 +80,9 @@ export async function notifyNewOrderEmail(
     const { error } = await resend.emails.send({
       from: `${sender.fromName} <${sender.fromEmail}>`,
       to,
-      subject: `New order — $${amount} from ${who}`,
+      subject: complimentary
+        ? `Complimentary order from ${who}`
+        : `New order — $${amount} from ${who}`,
       html: wrapEmailHtml(bodyHtml, {
         colors: site.colors,
         logoUrl: site.images.logo,

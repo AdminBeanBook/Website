@@ -13,6 +13,14 @@ export type ContactRow = {
   phone: string | null;
   notes: string | null;
   active: boolean;
+  taxExempt: boolean;
+  addressName: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  addressCity: string | null;
+  addressState: string | null;
+  addressPostal: string | null;
+  addressCountry: string | null;
   tags: ContactTagRow[];
   createdAt: string;
   updatedAt: string;
