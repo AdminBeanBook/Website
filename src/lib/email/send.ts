@@ -8,6 +8,12 @@ import {
 } from "@/lib/email/recipients";
 import { prisma } from "@/lib/db";
 
+export type EmailAttachment = {
+  filename: string;
+  content: string;
+  type?: string;
+};
+
 export type SendBulkEmailInput = {
   senderKey: string;
   subject: string;
@@ -18,6 +24,7 @@ export type SendBulkEmailInput = {
   sentByEmail: string;
   testOnly?: boolean;
   testEmail?: string;
+  attachments?: EmailAttachment[];
 };
 
 export type SendBulkEmailResult = {
@@ -32,6 +39,44 @@ function getResend(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();
   if (!key) return null;
   return new Resend(key);
+}
+
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENTS_TOTAL_BYTES = 20 * 1024 * 1024;
+
+function decodeBase64Size(content: string): number {
+  const padded = content.replace(/\s/g, "");
+  const padding = padded.endsWith("==") ? 2 : padded.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((padded.length * 3) / 4) - padding);
+}
+
+function toResendAttachments(attachments?: EmailAttachment[]) {
+  if (!attachments?.length) return undefined;
+  if (attachments.length > MAX_ATTACHMENTS) {
+    throw new Error(`You can attach up to ${MAX_ATTACHMENTS} files`);
+  }
+  let total = 0;
+  const out = attachments.map((file) => {
+    const filename = file.filename?.trim();
+    if (!filename || !file.content) {
+      throw new Error("Each attachment needs a file name and content");
+    }
+    const size = decodeBase64Size(file.content);
+    if (size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`${filename} is over 8 MB`);
+    }
+    total += size;
+    return {
+      filename,
+      content: file.content,
+      contentType: file.type || undefined,
+    };
+  });
+  if (total > MAX_ATTACHMENTS_TOTAL_BYTES) {
+    throw new Error("Attachments are over 20 MB total");
+  }
+  return out;
 }
 
 export async function sendBulkEmail(
@@ -65,6 +110,7 @@ export async function sendBulkEmail(
 
   const resend = getResend();
   const dryRun = !resend;
+  const attachments = toResendAttachments(input.attachments);
 
   let successCount = 0;
   let failureCount = 0;
@@ -97,8 +143,10 @@ export async function sendBulkEmail(
         const { error } = await resend.emails.send({
           from: `${sender.fromName} <${sender.fromEmail}>`,
           to: recipient.email,
+          replyTo: sender.fromEmail,
           subject: input.subject,
           html,
+          attachments,
         });
         if (error) {
           failureCount += 1;

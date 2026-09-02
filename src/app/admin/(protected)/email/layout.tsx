@@ -6,8 +6,8 @@ export default function EmailLayout({ children }: { children: React.ReactNode })
       <div>
         <h1 className="text-2xl font-semibold">Email</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Send branded bulk email, save reusable templates, and review what
-          went out and who received it.
+          Write an email, pick who it goes to, and send. Templates and sent mail
+          are in the tabs above.
         </p>
       </div>
       <EmailTabs />

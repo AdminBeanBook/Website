@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import {
-  countRecipients,
   parseTagIds,
+  resolveRecipients,
   type EmailAudience,
 } from "@/lib/email/recipients";
 
@@ -21,6 +21,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid audience" }, { status: 400 });
   }
 
-  const count = await countRecipients(audience, { customEmails: custom, tagIds });
-  return NextResponse.json({ count });
+  const list = await resolveRecipients(audience, {
+    customEmails: custom,
+    tagIds,
+  });
+  return NextResponse.json({
+    count: list.length,
+    preview: list.slice(0, 8),
+  });
 }

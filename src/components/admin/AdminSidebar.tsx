@@ -92,11 +92,23 @@ function CustomersIcon() {
   );
 }
 
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M6.25 2.5h1.5v1.5h4.5V2.5h1.5v1.5h2.5A1.75 1.75 0 0 1 18 5.75v10.5A1.75 1.75 0 0 1 16.25 18H3.75A1.75 1.75 0 0 1 2 16.25V5.75A1.75 1.75 0 0 1 3.75 4H6.25V2.5ZM3.5 8h13v8.25a.25.25 0 0 1-.25.25H3.75a.25.25 0 0 1-.25-.25V8Zm.25-2.5a.25.25 0 0 0-.25.25V6.5h13V5.75a.25.25 0 0 0-.25-.25H3.75Z"
+      />
+    </svg>
+  );
+}
+
 const MAIN_ICONS = {
   "/admin": HomeIcon,
   "/admin/orders": OrdersIcon,
   "/admin/email": EmailIcon,
   "/admin/messages": MessagesIcon,
+  "/admin/calendar": CalendarIcon,
   "/admin/settings/links": LinksIcon,
   "/admin/settings/contacts": ContactsIcon,
   "/admin/settings/customers": CustomersIcon,

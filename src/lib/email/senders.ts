@@ -15,7 +15,7 @@ export function getDefaultSenders(): EmailSender[] {
       key: "shops",
       label: "Coffee shops & partners",
       fromEmail:
-        process.env.EMAIL_SENDER_SHOPS?.trim() || "shops@thebeanbook.org",
+        process.env.EMAIL_SENDER_SHOPS?.trim() || "shops@thebeanbook.com",
       fromName:
         process.env.EMAIL_SENDER_SHOPS_NAME?.trim() || "The Bean Book — Shops",
     },
@@ -23,7 +23,7 @@ export function getDefaultSenders(): EmailSender[] {
       key: "customers",
       label: "Customers & admin",
       fromEmail:
-        process.env.EMAIL_SENDER_CUSTOMERS?.trim() || "admin@thebeanbook.org",
+        process.env.EMAIL_SENDER_CUSTOMERS?.trim() || "admin@thebeanbook.com",
       fromName:
         process.env.EMAIL_SENDER_CUSTOMERS_NAME?.trim() || "The Bean Book",
     },

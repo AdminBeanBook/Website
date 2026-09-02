@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DashboardUpcoming } from "@/components/admin/DashboardUpcoming";
+import { serializeCalendarEvent } from "@/lib/calendar/types";
 import { prisma } from "@/lib/db";
 
 export default async function AdminDashboardPage() {
@@ -9,6 +11,7 @@ export default async function AdminDashboardPage() {
     activeDiscounts,
     packageCount,
     quickLinks,
+    calendarEvents,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.customer.count(),
@@ -17,6 +20,9 @@ export default async function AdminDashboardPage() {
     prisma.packagePreset.count(),
     prisma.adminLink.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    prisma.calendarEvent.findMany({
+      orderBy: [{ date: "asc" }, { title: "asc" }],
     }),
   ]);
 
@@ -49,6 +55,10 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      <DashboardUpcoming
+        initialEvents={calendarEvents.map(serializeCalendarEvent)}
+      />
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">

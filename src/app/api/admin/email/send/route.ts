@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { sendBulkEmail } from "@/lib/email/send";
+import { sendBulkEmail, type EmailAttachment } from "@/lib/email/send";
 import type { EmailAudience } from "@/lib/email/recipients";
 
 export async function POST(request: Request) {
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     tagIds?: string[];
     testOnly?: boolean;
     testEmail?: string;
+    attachments?: EmailAttachment[];
   };
 
   if (!body.senderKey || !body.subject?.trim() || !body.htmlBody?.trim()) {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       sentByEmail: admin.email,
       testOnly: body.testOnly,
       testEmail: body.testEmail ?? admin.email,
+      attachments: body.attachments,
     });
     return NextResponse.json(result);
   } catch (err) {

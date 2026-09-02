@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { formatContactAddress } from "@/lib/contacts/address";
 import type { ContactRow, ContactTagRow } from "@/lib/contacts/types";
 
@@ -10,11 +10,6 @@ type ContactsManagerProps = {
   initialContacts: ContactRow[];
   initialTags: ContactTagRow[];
 };
-
-const CONTACT_CSV_TEMPLATE = [
-  "Name,Email,Phone,Street,Apt,City,State,ZIP",
-  "Jane Doe,jane@example.com,555-0100,123 Main St,Apt 4,Denver,CO,80202",
-].join("\n");
 
 const inputClass =
   "w-full rounded border border-gray-300 px-2 py-1.5 text-sm";
@@ -120,34 +115,8 @@ export function ContactsManager({
   const [taxExempt, setTaxExempt] = useState(false);
   const [address, setAddress] = useState<AddressFormValue>(EMPTY_ADDRESS);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [bulkPaste, setBulkPaste] = useState("");
-  const [bulkTagId, setBulkTagId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const csvInputRef = useRef<HTMLInputElement>(null);
-
-  async function reloadContacts() {
-    const listRes = await fetch(
-      filterTagId
-        ? `/api/admin/contacts?tagId=${filterTagId}`
-        : "/api/admin/contacts",
-    );
-    if (!listRes.ok) return;
-    const list = (await listRes.json()) as ContactRow[];
-    setContacts(
-      list.map((c) => ({
-        ...c,
-        createdAt:
-          typeof c.createdAt === "string"
-            ? c.createdAt
-            : new Date(c.createdAt).toISOString(),
-        updatedAt:
-          typeof c.updatedAt === "string"
-            ? c.updatedAt
-            : new Date(c.updatedAt).toISOString(),
-      })),
-    );
-  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -220,76 +189,6 @@ export function ContactsManager({
     router.refresh();
   }
 
-  async function importBulk() {
-    if (!bulkPaste.trim()) return;
-    setLoading(true);
-    const res = await fetch("/api/admin/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bulk: bulkPaste,
-        defaultTagId: bulkTagId || undefined,
-      }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json();
-      setMessage(data.error ?? "Import failed");
-      return;
-    }
-    await reloadContacts();
-    setBulkPaste("");
-    setMessage("Emails imported as contacts");
-    router.refresh();
-  }
-
-  async function importCsvFile(file: File) {
-    const name = file.name.toLowerCase();
-    if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
-      setMessage(
-        "Save from Excel as CSV UTF-8 (Comma delimited), then upload the .csv file.",
-      );
-      return;
-    }
-    setLoading(true);
-    setMessage(null);
-    const csv = await file.text();
-    const res = await fetch("/api/admin/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        csv,
-        defaultTagId: bulkTagId || undefined,
-      }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (csvInputRef.current) csvInputRef.current.value = "";
-    if (!res.ok) {
-      setMessage(data.error ?? "CSV import failed");
-      return;
-    }
-    await reloadContacts();
-    setMessage(
-      `Imported ${data.created ?? 0} new, updated ${data.updated ?? 0}${
-        data.skipped ? `, skipped ${data.skipped}` : ""
-      }`,
-    );
-    router.refresh();
-  }
-
-  function downloadCsvTemplate() {
-    const blob = new Blob([CONTACT_CSV_TEMPLATE], {
-      type: "text/csv;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "contacts-template.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function updateContact(
     contact: ContactRow,
     patch: Partial<ContactRow> & { tagIds?: string[] },
@@ -330,48 +229,6 @@ export function ContactsManager({
     router.refresh();
   }
 
-  async function syncCustomers() {
-    if (
-      !confirm(
-        "Import all Customers into Contacts? Existing emails are updated and tagged “Customer”.",
-      )
-    ) {
-      return;
-    }
-    setLoading(true);
-    setMessage(null);
-    const res = await fetch("/api/admin/contacts/sync-customers", {
-      method: "POST",
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setMessage(data.error ?? "Sync failed");
-      return;
-    }
-    setMessage(
-      `Synced ${data.total} customers (${data.created} new, ${data.updated} updated)`,
-    );
-    router.refresh();
-    const listRes = await fetch("/api/admin/contacts");
-    if (listRes.ok) {
-      const list = (await listRes.json()) as ContactRow[];
-      setContacts(
-        list.map((c) => ({
-          ...c,
-          createdAt:
-            typeof c.createdAt === "string"
-              ? c.createdAt
-              : new Date(c.createdAt).toISOString(),
-          updatedAt:
-            typeof c.updatedAt === "string"
-              ? c.updatedAt
-              : new Date(c.updatedAt).toISOString(),
-        })),
-      );
-    }
-  }
-
   return (
     <div className="space-y-6">
       {tags.length === 0 && (
@@ -386,29 +243,6 @@ export function ContactsManager({
           so you can label contacts for bulk email.
         </p>
       )}
-
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Import customers
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Copy everyone from Customers into Contacts (tagged “Customer”),
-              including the latest shipping address from their orders. New
-              orders sync automatically going forward.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={syncCustomers}
-            className="rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
-            Sync customers → contacts
-          </button>
-        </div>
-      </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Add contact</h2>
@@ -494,73 +328,6 @@ export function ContactsManager({
             </button>
           </div>
         </form>
-      </section>
-
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Import contacts</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload a <strong>plain CSV</strong> (not an Excel workbook). In Excel:
-          File → Save As → <strong>CSV UTF-8 (Comma delimited)</strong>. That is
-          the same as a normal .csv file. Columns can be Name, Email, Phone,
-          Street, Apt, City, State, ZIP — first/last name also work.
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
-            <input
-              ref={csvInputRef}
-              type="file"
-              accept=".csv,text/csv,text/plain"
-              className="sr-only"
-              disabled={loading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void importCsvFile(file);
-              }}
-            />
-            Upload CSV
-          </label>
-          <button
-            type="button"
-            onClick={downloadCsvTemplate}
-            className="text-sm text-brand-green hover:underline"
-          >
-            Download template
-          </button>
-        </div>
-        <p className="mt-4 text-sm font-medium text-gray-700">Or paste emails</p>
-        <p className="mt-1 text-sm text-gray-500">
-          One email per line (or comma-separated). Optional tag applies to CSV
-          and email imports.
-        </p>
-        <textarea
-          value={bulkPaste}
-          onChange={(e) => setBulkPaste(e.target.value)}
-          rows={3}
-          className={`${inputClass} mt-3 font-mono text-xs`}
-          placeholder="shop@example.com"
-        />
-        {tags.length > 0 && (
-          <select
-            value={bulkTagId}
-            onChange={(e) => setBulkTagId(e.target.value)}
-            className={`${inputClass} mt-2 max-w-xs`}
-          >
-            <option value="">No tag on import</option>
-            {tags.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <button
-          type="button"
-          onClick={importBulk}
-          disabled={loading}
-          className="mt-2 text-sm text-brand-green hover:underline disabled:opacity-60"
-        >
-          Import as contacts
-        </button>
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

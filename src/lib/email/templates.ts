@@ -28,13 +28,6 @@ function bodyTextColor(colors?: BrandColors): string {
   return "#2D3E40";
 }
 
-function linkColor(colors?: BrandColors): string {
-  if (colors?.text && typeof colors.text === "object" && colors.text.link) {
-    return colors.text.link;
-  }
-  return colors?.accent ?? "#c47a3a";
-}
-
 /**
  * Branded email shell that survives Apple Mail / Gmail dark-mode rewriting.
  * Light page + white card + dark text is far more reliable than a full dark body.
@@ -52,7 +45,6 @@ export function wrapEmailHtml(
   const cream = colors?.cream ?? "#e5d8c1";
   const accent = colors?.accent ?? "#c47a3a";
   const text = bodyTextColor(colors);
-  const link = linkColor(colors);
   const siteName = opts.siteName?.trim() || SITE.name;
   const tagline = opts.tagline?.trim() || "Denver coffee passbook";
   const logoUrl = opts.logoUrl?.trim() || IMAGES.logo;
@@ -82,7 +74,10 @@ export function wrapEmailHtml(
       padding-left: 28px;
     }
     .bb-body li { margin: 0 0 8px; }
-    .bb-body a { color: ${link} !important; }
+    .bb-body a {
+      color: #1a73e8 !important;
+      text-decoration: underline !important;
+    }
     .bb-body img { max-width: 100%; height: auto; }
   </style>
 </head>
@@ -114,12 +109,4 @@ export function wrapEmailHtml(
 </html>`;
 }
 
-export const EMAIL_TEMPLATE_STARTER = `<h2 style="text-align:center;">Hello Team!</h2>
-<p>Write your message here. Use the toolbar for headings, lists, alignment, links, and brand colors.</p>
-<ol>
-  <li>First step</li>
-  <li>Second step</li>
-  <li>Third step</li>
-</ol>
-<p style="text-align:center;"><a href="https://thebeanbook.com">Your call to action</a></p>
-<p>Thanks,<br>The Bean Book team</p>`;
+export const EMAIL_TEMPLATE_STARTER = `<p></p>`;

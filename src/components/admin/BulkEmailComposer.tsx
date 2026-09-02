@@ -16,6 +16,8 @@ type SavedTemplate = {
   htmlBody: string;
 };
 
+type RecipientPreview = { email: string; label?: string };
+
 type BulkEmailComposerProps = {
   initialSenders: EmailSender[];
   colors: BrandColors;
@@ -28,10 +30,57 @@ type BulkEmailComposerProps = {
 
 type Audience = "customers" | "contacts" | "custom";
 
-function orderFromAddresses(senders: EmailSender[]): EmailSender[] {
+const AUDIENCE_OPTIONS: { value: Audience; label: string; hint: string }[] = [
+  {
+    value: "contacts",
+    label: "Contacts",
+    hint: "People in Contacts, optionally filtered by tag",
+  },
+  {
+    value: "customers",
+    label: "Customers",
+    hint: "Everyone who has ordered",
+  },
+  {
+    value: "custom",
+    label: "Paste emails",
+    hint: "A list you type or paste",
+  },
+];
+
+function orderedSenders(senders: EmailSender[]): EmailSender[] {
   const admin = senders.find((s) => s.key === "customers");
   const shops = senders.find((s) => s.key === "shops");
-  return [admin, shops].filter((s): s is EmailSender => Boolean(s));
+  const rest = senders.filter(
+    (s) => s.key !== "customers" && s.key !== "shops",
+  );
+  return [admin, shops, ...rest].filter((s): s is EmailSender => Boolean(s));
+}
+
+function looksEmpty(html: string): boolean {
+  return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").trim() === "";
+}
+
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_FILES = 5;
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function BulkEmailComposer({
@@ -44,7 +93,7 @@ export function BulkEmailComposer({
   prefillTemplate,
 }: BulkEmailComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const fromAddresses = orderFromAddresses(initialSenders);
+  const fromAddresses = orderedSenders(initialSenders);
   const [senderKey, setSenderKey] = useState(
     fromAddresses[0]?.key ?? "customers",
   );
@@ -52,19 +101,41 @@ export function BulkEmailComposer({
   const [selectedTemplateId, setSelectedTemplateId] = useState(
     prefillTemplate?.id ?? "",
   );
-  const [audience, setAudience] = useState<Audience>("custom");
+  const [audience, setAudience] = useState<Audience | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [customEmails, setCustomEmails] = useState("");
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
-  const [view, setView] = useState<"edit" | "preview">("edit");
+  const [recipientPreview, setRecipientPreview] = useState<RecipientPreview[]>(
+    [],
+  );
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [draftHtml, setDraftHtml] = useState(
     prefillTemplate?.htmlBody ?? EMAIL_TEMPLATE_STARTER,
   );
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [confirmSend, setConfirmSend] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [templates, setTemplates] = useState(initialTemplates);
+  const [editorKey, setEditorKey] = useState(0);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedSender =
+    fromAddresses.find((s) => s.key === senderKey) ?? fromAddresses[0];
+
+  const getBodyHtml = useCallback(() => {
+    return editorRef.current?.innerHTML || draftHtml;
+  }, [draftHtml]);
 
   const refreshCount = useCallback(async () => {
+    if (!audience) {
+      setRecipientCount(null);
+      setRecipientPreview([]);
+      return;
+    }
     const params = new URLSearchParams({
       audience,
       custom: audience === "custom" ? customEmails : "",
@@ -73,37 +144,42 @@ export function BulkEmailComposer({
       params.set("tagIds", selectedTagIds.join(","));
     }
     const res = await fetch(`/api/admin/email/recipients?${params}`);
-    if (res.ok) {
-      const data = (await res.json()) as { count: number };
-      setRecipientCount(data.count);
-    }
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      count: number;
+      preview?: RecipientPreview[];
+    };
+    setRecipientCount(data.count);
+    setRecipientPreview(data.preview ?? []);
   }, [audience, customEmails, selectedTagIds]);
 
   useEffect(() => {
-    refreshCount();
-  }, [refreshCount]);
+    const delay = audience === "custom" ? 400 : 0;
+    const timer = window.setTimeout(() => {
+      void refreshCount();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [audience, customEmails, refreshCount]);
 
-  function getBodyHtml(): string {
-    return editorRef.current?.innerHTML || draftHtml;
-  }
-
-  function captureDraft(): string {
-    const html = editorRef.current?.innerHTML || draftHtml;
+  function setEditorHtml(html: string) {
     setDraftHtml(html);
-    return html;
+    setEditorKey((key) => key + 1);
   }
 
   function loadTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
-    if (!templateId) return;
-    const template = initialTemplates.find((t) => t.id === templateId);
-    if (!template) return;
-    if (template.subject) setSubject(template.subject);
-    setDraftHtml(template.htmlBody);
-    if (editorRef.current) {
-      editorRef.current.innerHTML = template.htmlBody;
+    setMessage(null);
+    setError(null);
+    if (!templateId) {
+      setSubject("");
+      setEditorHtml(EMAIL_TEMPLATE_STARTER);
+      return;
     }
-    setMessage(`Loaded template: ${template.name}`);
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+    setSubject(template.subject);
+    setEditorHtml(template.htmlBody || EMAIL_TEMPLATE_STARTER);
+    setMessage(`Loaded “${template.name}”`);
   }
 
   function toggleTag(id: string) {
@@ -113,7 +189,7 @@ export function BulkEmailComposer({
   }
 
   async function loadPreview() {
-    const htmlBody = captureDraft();
+    const htmlBody = getBodyHtml();
     const res = await fetch("/api/admin/email/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -123,14 +199,67 @@ export function BulkEmailComposer({
       const data = (await res.json()) as { html: string };
       setPreviewHtml(data.html);
     } else {
-      setPreviewHtml(getBodyHtml());
+      setPreviewHtml(htmlBody);
     }
-    setView("preview");
+  }
+
+  function addFiles(list: FileList | null) {
+    if (!list?.length) return;
+    setError(null);
+    setFiles((current) => {
+      const next = [...current];
+      for (const file of list) {
+        if (next.length >= MAX_FILES) {
+          setError(`You can attach up to ${MAX_FILES} files`);
+          break;
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          setError(`${file.name} is over 8 MB`);
+          continue;
+        }
+        if (next.some((f) => f.name === file.name && f.size === file.size)) {
+          continue;
+        }
+        next.push(file);
+      }
+      return next;
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSend(testOnly: boolean) {
+    if (!testOnly && !audience) {
+      setError("Choose who this goes to.");
+      setConfirmSend(false);
+      return;
+    }
+    if (!testOnly && looksEmpty(getBodyHtml())) {
+      setError("Write a message before sending.");
+      setConfirmSend(false);
+      return;
+    }
     setSending(true);
     setMessage(null);
+    setError(null);
+    setConfirmSend(false);
+    let attachments:
+      | { filename: string; content: string; type: string }[]
+      | undefined;
+    try {
+      if (files.length > 0) {
+        attachments = await Promise.all(
+          files.map(async (file) => ({
+            filename: file.name,
+            content: await readFileAsBase64(file),
+            type: file.type || "application/octet-stream",
+          })),
+        );
+      }
+    } catch {
+      setSending(false);
+      setError("Could not read an attached file");
+      return;
+    }
     const res = await fetch("/api/admin/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -138,11 +267,12 @@ export function BulkEmailComposer({
         senderKey,
         subject,
         htmlBody: getBodyHtml(),
-        audience,
+        audience: audience ?? "custom",
         customEmails: audience === "custom" ? customEmails : undefined,
         tagIds: audience === "contacts" ? selectedTagIds : undefined,
         testOnly,
         testEmail: currentAdminEmail,
+        attachments,
       }),
     });
     const data = (await res.json()) as {
@@ -156,253 +286,454 @@ export function BulkEmailComposer({
     setSending(false);
 
     if (!res.ok) {
-      setMessage(data.error ?? "Send failed");
+      setError(data.error ?? "Send failed");
       return;
     }
 
-    const prefix = data.dryRun ? "[Test mode — no RESEND_API_KEY] " : "";
-    const summary = `${prefix}Sent to ${data.successCount ?? 0} of ${data.recipientCount ?? 0}${
-      data.failureCount ? ` (${data.failureCount} failed)` : ""
-    }`;
-    const detail =
-      data.errors?.length && (data.failureCount ?? 0) > 0
-        ? ` — ${data.errors.join("; ")}`
-        : "";
-    setMessage(summary + detail);
+    const prefix = data.dryRun ? "Not actually delivered (missing Resend key). " : "";
+    if (testOnly) {
+      setMessage(
+        `${prefix}Test sent to ${currentAdminEmail}. Check that inbox before sending to everyone.`,
+      );
+      return;
+    }
+    const failed = data.failureCount ?? 0;
+    const summary = `${prefix}Sent to ${data.successCount ?? 0} of ${data.recipientCount ?? 0}`;
+    if (failed > 0) {
+      setError(
+        `${summary} (${failed} failed)${
+          data.errors?.length ? ` — ${data.errors.join("; ")}` : ""
+        }`,
+      );
+      return;
+    }
+    setMessage(summary);
   }
 
+  async function saveTemplate() {
+    const name = saveName.trim();
+    if (!name) return;
+    const res = await fetch("/api/admin/email/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        subject,
+        htmlBody: getBodyHtml(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Could not save template");
+      return;
+    }
+    setTemplates((list) => [
+      ...list,
+      {
+        id: data.id,
+        name: data.name,
+        subject: data.subject,
+        htmlBody: data.htmlBody,
+      },
+    ]);
+    setSelectedTemplateId(data.id);
+    setSaveName("");
+    setSaveOpen(false);
+    setMessage(`Saved template “${data.name}”`);
+  }
+
+  const canSend =
+    Boolean(audience) &&
+    Boolean(subject.trim()) &&
+    (recipientCount ?? 0) > 0 &&
+    !sending;
+  const audienceLabel =
+    AUDIENCE_OPTIONS.find((o) => o.value === audience)?.label ?? "recipients";
   const inputClass =
-    "w-full rounded border border-gray-300 px-2 py-1.5 text-sm";
+    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="space-y-4">
-        {!emailConfigured && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Add <code className="text-xs">RESEND_API_KEY</code> to{" "}
-            <code className="text-xs">.env.local</code> to send real email. Until
-            then, sends are logged only (dry run). Verify{" "}
-            <code className="text-xs">shops@thebeanbook.org</code> and{" "}
-            <code className="text-xs">Admin@thebeanbook.org</code> in Resend.
-          </p>
-        )}
+    <div className="mx-auto max-w-3xl space-y-4">
+      {!emailConfigured && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Email sending is not connected yet. Messages will be logged only until
+          Resend is set up.
+        </p>
+      )}
 
-        <div className="flex gap-2 border-b border-gray-200">
-          <button
-            type="button"
-            onClick={() => setView("edit")}
-            className={`border-b-2 px-3 py-2 text-sm ${
-              view === "edit"
-                ? "border-brand-green text-brand-green"
-                : "border-transparent text-gray-600"
-            }`}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            onClick={loadPreview}
-            className={`border-b-2 px-3 py-2 text-sm ${
-              view === "preview"
-                ? "border-brand-green text-brand-green"
-                : "border-transparent text-gray-600"
-            }`}
-          >
-            Preview
-          </button>
-        </div>
-
-        <div className={view === "edit" ? "block" : "hidden"}>
-          <EmailHtmlEditor
-            editorRef={editorRef}
-            colors={colors}
-            defaultHtml={draftHtml}
-          />
-        </div>
-        {view === "preview" && (
-          <iframe
-            title="Email preview"
-            srcDoc={previewHtml}
-            className="h-[400px] w-full rounded-lg border border-gray-200 bg-white"
-          />
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={sending || !subject.trim()}
-            onClick={() => handleSend(true)}
-            className="rounded border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60"
-          >
-            Send test to me
-          </button>
-          <button
-            type="button"
-            disabled={sending || !subject.trim() || recipientCount === 0}
-            onClick={() => handleSend(false)}
-            className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
-          >
-            {sending ? "Sending…" : `Send to ${recipientCount ?? 0} recipients`}
-          </button>
-        </div>
-        {message && (
-          <p
-            className={`text-sm ${
-              message.includes("failed") ? "text-red-700" : "text-green-700"
-            }`}
-            role="status"
-          >
-            {message}
-          </p>
-        )}
-      </div>
-
-      <aside className="space-y-4">
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900">Template</h3>
-          {initialTemplates.length === 0 ? (
-            <p className="mt-2 text-xs text-gray-500">
-              No templates yet.{" "}
-              <Link
-                href="/admin/email/templates"
-                className="text-brand-green hover:underline"
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+          <h2 className="text-base font-semibold text-gray-900">New email</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {templates.length > 0 && (
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => loadTemplate(e.target.value)}
+                className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               >
-                Create one
-              </Link>
-              .
-            </p>
-          ) : (
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => loadTemplate(e.target.value)}
-              className={`${inputClass} mt-2`}
+                <option value="">Blank email</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSaveOpen((open) => !open);
+                setSaveName(
+                  templates.find((t) => t.id === selectedTemplateId)?.name ?? "",
+                );
+              }}
+              className="text-sm text-brand-green hover:underline"
             >
-              <option value="">Start from scratch</option>
-              {initialTemplates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+              Save as template
+            </button>
+          </div>
+        </div>
+
+        {saveOpen && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <input
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="Template name"
+              className="min-w-[12rem] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => void saveTemplate()}
+              disabled={!saveName.trim()}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setSaveOpen(false)}
+              className="text-sm text-gray-500 hover:underline"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="divide-y divide-gray-100">
+          <label className="grid gap-1 px-4 py-3 sm:grid-cols-[5rem_1fr] sm:items-center">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              From
+            </span>
+            <select
+              value={senderKey}
+              onChange={(e) => setSenderKey(e.target.value)}
+              className={inputClass}
+            >
+              {fromAddresses.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.fromName} · {s.fromEmail}
                 </option>
               ))}
             </select>
-          )}
-          <Link
-            href="/admin/email/templates"
-            className="mt-2 block text-xs text-brand-green hover:underline"
-          >
-            Manage templates →
-          </Link>
-        </section>
+          </label>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900">From address</h3>
-          <select
-            value={senderKey}
-            onChange={(e) => setSenderKey(e.target.value)}
-            className={`${inputClass} mt-2`}
-          >
-            {fromAddresses.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.fromEmail}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900">Recipients</h3>
-          <select
-            value={audience}
-            onChange={(e) => setAudience(e.target.value as Audience)}
-            className={`${inputClass} mt-2`}
-          >
-            <option value="customers">All customers</option>
-            <option value="contacts">Tagged contacts</option>
-            <option value="custom">Custom list</option>
-          </select>
-          <p className="mt-2 text-xs text-gray-500">
-            {recipientCount ?? "…"} recipients selected
-          </p>
-          {audience === "contacts" && (
-            <div className="mt-2 space-y-2">
-              {initialTags.length === 0 ? (
-                <p className="text-xs text-amber-800">
-                  No tags yet.{" "}
-                  <Link
-                    href="/admin/settings/contacts/tags"
-                    className="underline"
+          <div className="grid gap-2 px-4 py-3 sm:grid-cols-[5rem_1fr] sm:items-start">
+            <span className="pt-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+              To
+            </span>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {AUDIENCE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setAudience(option.value)}
+                    className={`rounded-full border px-3 py-1 text-sm ${
+                      audience === option.value
+                        ? "border-brand-green bg-brand-green/10 font-medium text-brand-green"
+                        : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
                   >
-                    Create tags
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="/admin/settings/contacts"
-                    className="underline"
-                  >
-                    add contacts
-                  </Link>
-                  .
-                </p>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {!audience ? (
+                <p className="text-sm text-gray-500">Choose who this goes to.</p>
               ) : (
                 <>
                   <p className="text-xs text-gray-500">
-                    Leave all unchecked to email every active contact with an
-                    email. Check one or more to narrow the list.
+                    {AUDIENCE_OPTIONS.find((o) => o.value === audience)?.hint}
                   </p>
-                  <div className="flex flex-wrap gap-1">
-                    {initialTags.map((tag) => (
-                      <label
-                        key={tag.id}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5 text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTagIds.includes(tag.id)}
-                          onChange={() => toggleTag(tag.id)}
-                        />
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: tag.color }}
-                        />
-                        {tag.name}
-                      </label>
-                    ))}
-                  </div>
+
+                  {audience === "contacts" && (
+                    <div>
+                      {initialTags.length === 0 ? (
+                        <p className="text-sm text-gray-600">
+                          No tags yet — this will go to every contact with an email.{" "}
+                          <Link
+                            href="/admin/settings/contacts/tags"
+                            className="text-brand-green hover:underline"
+                          >
+                            Add tags
+                          </Link>
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {initialTags.map((tag) => {
+                            const on = selectedTagIds.includes(tag.id);
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={() => toggleTag(tag.id)}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
+                                  on
+                                    ? "border-gray-900 bg-gray-900 text-white"
+                                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                                }`}
+                              >
+                                <span
+                                  className="h-2 w-2 rounded-full"
+                                  style={{ backgroundColor: tag.color }}
+                                />
+                                {tag.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {selectedTagIds.length === 0 && initialTags.length > 0 ? (
+                        <p className="mt-2 text-xs text-gray-500">
+                          No tags selected — sending to all contacts with an email.
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {audience === "custom" && (
+                    <textarea
+                      value={customEmails}
+                      onChange={(e) => setCustomEmails(e.target.value)}
+                      rows={3}
+                      placeholder="one@email.com, another@email.com"
+                      className={`${inputClass} font-mono text-xs`}
+                    />
+                  )}
+
+                  <p className="text-sm text-gray-700">
+                    {recipientCount === null
+                      ? "Counting…"
+                      : recipientCount === 0
+                        ? "No one selected yet."
+                        : `${recipientCount} ${
+                            recipientCount === 1 ? "person" : "people"
+                          }`}
+                    {recipientPreview.length > 0 ? (
+                      <span className="text-gray-500">
+                        {" "}
+                        ·{" "}
+                        {recipientPreview
+                          .map((r) => r.label || r.email)
+                          .join(", ")}
+                        {recipientCount &&
+                        recipientCount > recipientPreview.length
+                          ? `, +${recipientCount - recipientPreview.length} more`
+                          : ""}
+                      </span>
+                    ) : null}
+                  </p>
                 </>
               )}
             </div>
-          )}
-          {audience === "custom" && (
-            <textarea
-              value={customEmails}
-              onChange={(e) => setCustomEmails(e.target.value)}
-              rows={4}
-              placeholder="One email per line"
-              className={`${inputClass} mt-2 font-mono text-xs`}
+          </div>
+
+          <label className="grid gap-1 px-4 py-3 sm:grid-cols-[5rem_1fr] sm:items-center">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Subject
+            </span>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className={inputClass}
+              placeholder="What’s this email about?"
             />
-          )}
-        </section>
+          </label>
+        </div>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900">Subject</h3>
-          <input
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className={`${inputClass} mt-2`}
-            placeholder="Email subject"
-          />
-        </section>
+          <div className="grid gap-2 border-t border-gray-100 px-4 py-4 sm:grid-cols-[5rem_1fr] sm:items-start">
+            <span className="pt-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+              Message
+            </span>
+            <EmailHtmlEditor
+              key={editorKey}
+              editorRef={editorRef}
+              colors={colors}
+              defaultHtml={draftHtml}
+              onChange={setDraftHtml}
+              placeholder="Write the email here…"
+              minHeightClass="min-h-[320px]"
+              extraToolbar={
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => addFiles(e.target.files)}
+                  />
+                  <button
+                    type="button"
+                    title="Attach files"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded px-2 py-1 text-xs text-gray-800 hover:bg-white"
+                  >
+                    Attach
+                  </button>
+                </>
+              }
+            />
+            {files.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {files.map((file, index) => (
+                  <li
+                    key={`${file.name}-${file.size}-${index}`}
+                    className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm"
+                  >
+                    <span className="truncate">
+                      {file.name}
+                      <span className="text-gray-500">
+                        {" "}
+                        · {formatFileSize(file.size)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFiles((list) => list.filter((_, i) => i !== index))
+                      }
+                      className="shrink-0 text-xs text-gray-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-        <p className="text-xs text-gray-500">
-          Manage people in{" "}
-          <Link
-            href="/admin/settings/contacts"
-            className="text-brand-green hover:underline"
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => void loadPreview()}
+            className="text-sm text-gray-700 hover:underline"
           >
-            Settings → Contacts
-          </Link>
-          .
+            Preview
+          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={sending || !subject.trim()}
+              onClick={() => void handleSend(true)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Send test to me
+            </button>
+            <button
+              type="button"
+              disabled={!canSend}
+              onClick={() => setConfirmSend(true)}
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              Send
+              {recipientCount ? ` to ${recipientCount}` : ""}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-700" role="alert">
+          {error}
         </p>
-      </aside>
+      )}
+      {message && (
+        <p className="text-sm text-green-800" role="status">
+          {message}
+        </p>
+      )}
+
+      {previewHtml !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setPreviewHtml(null)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Preview</p>
+                <p className="text-xs text-gray-500">
+                  {selectedSender?.fromEmail} · {subject || "(no subject)"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewHtml(null)}
+                className="text-sm text-gray-600 hover:underline"
+              >
+                Close
+              </button>
+            </div>
+            <iframe
+              title="Email preview"
+              srcDoc={previewHtml}
+              className="min-h-[24rem] w-full flex-1 bg-gray-100"
+            />
+          </div>
+        </div>
+      )}
+
+      {confirmSend && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Send this email?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              It will go to <strong>{recipientCount}</strong> {audienceLabel.toLowerCase()}{" "}
+              from <strong>{selectedSender?.fromEmail}</strong>.
+            </p>
+            <p className="mt-2 text-sm text-gray-600">
+              Subject: <strong>{subject}</strong>
+            </p>
+            {files.length > 0 ? (
+              <p className="mt-2 text-sm text-gray-600">
+                Attachments: {files.map((f) => f.name).join(", ")}
+              </p>
+            ) : null}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmSend(false)}
+                className="rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => void handleSend(false)}
+                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                {sending ? "Sending…" : "Send now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
