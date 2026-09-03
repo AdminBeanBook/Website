@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EmailHtmlEditor } from "@/components/admin/EmailHtmlEditor";
 import type { ContactTagRow } from "@/lib/contacts/types";
+import {
+  draftHasContent,
+  type EmailDraftRow,
+} from "@/lib/email/drafts";
 import type { EmailSender } from "@/lib/email/senders";
 import { EMAIL_TEMPLATE_STARTER } from "@/lib/email/templates";
 
@@ -26,6 +30,7 @@ type BulkEmailComposerProps = {
   initialTags: ContactTagRow[];
   initialTemplates: SavedTemplate[];
   prefillTemplate?: SavedTemplate | null;
+  initialDraft?: EmailDraftRow | null;
 };
 
 type Audience = "customers" | "contacts" | "custom";
@@ -91,19 +96,34 @@ export function BulkEmailComposer({
   initialTags,
   initialTemplates,
   prefillTemplate,
+  initialDraft,
 }: BulkEmailComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fromAddresses = orderedSenders(initialSenders);
-  const [senderKey, setSenderKey] = useState(
-    fromAddresses[0]?.key ?? "customers",
+  const [senderKey, setSenderKey] = useState(() => {
+    if (
+      initialDraft?.senderKey &&
+      fromAddresses.some((s) => s.key === initialDraft.senderKey)
+    ) {
+      return initialDraft.senderKey;
+    }
+    return fromAddresses[0]?.key ?? "customers";
+  });
+  const [subject, setSubject] = useState(
+    initialDraft?.subject ?? prefillTemplate?.subject ?? "",
   );
-  const [subject, setSubject] = useState(prefillTemplate?.subject ?? "");
   const [selectedTemplateId, setSelectedTemplateId] = useState(
-    prefillTemplate?.id ?? "",
+    initialDraft ? "" : (prefillTemplate?.id ?? ""),
   );
-  const [audience, setAudience] = useState<Audience | null>(null);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [customEmails, setCustomEmails] = useState("");
+  const [audience, setAudience] = useState<Audience | null>(
+    initialDraft?.audience ?? null,
+  );
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    initialDraft?.tagIds ?? [],
+  );
+  const [customEmails, setCustomEmails] = useState(
+    initialDraft?.customEmails ?? "",
+  );
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [recipientPreview, setRecipientPreview] = useState<RecipientPreview[]>(
     [],
@@ -112,7 +132,15 @@ export function BulkEmailComposer({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draftHtml, setDraftHtml] = useState(
-    prefillTemplate?.htmlBody ?? EMAIL_TEMPLATE_STARTER,
+    initialDraft?.htmlBody ??
+      prefillTemplate?.htmlBody ??
+      EMAIL_TEMPLATE_STARTER,
+  );
+  const [draftId, setDraftId] = useState<string | null>(
+    initialDraft?.id ?? null,
+  );
+  const [draftStatus, setDraftStatus] = useState<string | null>(
+    initialDraft ? "Draft loaded" : null,
   );
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
@@ -122,6 +150,25 @@ export function BulkEmailComposer({
   const [editorKey, setEditorKey] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const skipPersistRef = useRef(false);
+  const mountedRef = useRef(true);
+  const draftIdRef = useRef<string | null>(initialDraft?.id ?? null);
+  const senderKeyRef = useRef(senderKey);
+  const subjectRef = useRef(subject);
+  const audienceRef = useRef(audience);
+  const customEmailsRef = useRef(customEmails);
+  const tagIdsRef = useRef(selectedTagIds);
+  const draftHtmlRef = useRef(draftHtml);
+  const persistDraftRef = useRef<
+    (opts?: { keepalive?: boolean; silent?: boolean }) => Promise<boolean>
+  >(async () => false);
+
+  senderKeyRef.current = senderKey;
+  subjectRef.current = subject;
+  audienceRef.current = audience;
+  customEmailsRef.current = customEmails;
+  tagIdsRef.current = selectedTagIds;
+  draftHtmlRef.current = draftHtml;
 
   const selectedSender =
     fromAddresses.find((s) => s.key === senderKey) ?? fromAddresses[0];
@@ -160,6 +207,104 @@ export function BulkEmailComposer({
     }, delay);
     return () => window.clearTimeout(timer);
   }, [audience, customEmails, refreshCount]);
+
+  function snapshotDraft() {
+    return {
+      subject: subjectRef.current,
+      htmlBody: editorRef.current?.innerHTML || draftHtmlRef.current,
+      senderKey: senderKeyRef.current,
+      audience: audienceRef.current,
+      customEmails: customEmailsRef.current,
+      tagIds: tagIdsRef.current,
+    };
+  }
+
+  function putDraftUrlInHistory(id: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("draft", id);
+    url.searchParams.delete("template");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }
+
+  async function persistDraft(opts?: {
+    keepalive?: boolean;
+    silent?: boolean;
+  }): Promise<boolean> {
+    if (skipPersistRef.current) return false;
+    const payload = snapshotDraft();
+    if (!draftHasContent(payload)) return false;
+    const id = draftIdRef.current ?? crypto.randomUUID();
+    draftIdRef.current = id;
+    if (mountedRef.current) {
+      setDraftId(id);
+      putDraftUrlInHistory(id);
+      if (!opts?.silent && !opts?.keepalive) {
+        setDraftStatus("Saving…");
+      }
+    }
+    try {
+      const res = await fetch(`/api/admin/email/drafts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: opts?.keepalive,
+      });
+      if (!res.ok) {
+        if (mountedRef.current && !opts?.keepalive) {
+          setDraftStatus("Could not save draft");
+        }
+        return false;
+      }
+      if (mountedRef.current) {
+        setDraftStatus("Draft saved");
+      }
+      return true;
+    } catch {
+      if (mountedRef.current && !opts?.keepalive) {
+        setDraftStatus("Could not save draft");
+      }
+      return false;
+    }
+  }
+
+  persistDraftRef.current = persistDraft;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    function saveOnLeave() {
+      void persistDraftRef.current?.({ keepalive: true, silent: true });
+    }
+    window.addEventListener("pagehide", saveOnLeave);
+    window.addEventListener("beforeunload", saveOnLeave);
+    return () => {
+      window.removeEventListener("pagehide", saveOnLeave);
+      window.removeEventListener("beforeunload", saveOnLeave);
+      mountedRef.current = false;
+      void persistDraftRef.current?.({ silent: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void persistDraft({ silent: true });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [subject, draftHtml, senderKey, audience, customEmails, selectedTagIds]);
+
+  async function handleSaveDraft() {
+    setError(null);
+    const payload = snapshotDraft();
+    if (!draftHasContent(payload)) {
+      setError("Write something before saving a draft.");
+      return;
+    }
+    const ok = await persistDraft();
+    if (ok) {
+      setMessage("Draft saved. Find it under Drafts if you leave this page.");
+    } else {
+      setError("Could not save draft.");
+    }
+  }
 
   function setEditorHtml(html: string) {
     setDraftHtml(html);
@@ -308,6 +453,15 @@ export function BulkEmailComposer({
       return;
     }
     setMessage(summary);
+    skipPersistRef.current = true;
+    const id = draftIdRef.current;
+    if (id) {
+      void fetch(`/api/admin/email/drafts/${id}`, { method: "DELETE" });
+    }
+    draftIdRef.current = null;
+    setDraftId(null);
+    setDraftStatus(null);
+    window.history.replaceState(null, "", "/admin/email");
   }
 
   async function saveTemplate() {
@@ -363,7 +517,9 @@ export function BulkEmailComposer({
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
-          <h2 className="text-base font-semibold text-gray-900">New email</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            {draftId ? "Draft" : "New email"}
+          </h2>
           <div className="flex flex-wrap items-center gap-2">
             {templates.length > 0 && (
               <select
@@ -596,6 +752,7 @@ export function BulkEmailComposer({
               }
             />
             {files.length > 0 && (
+              <>
               <ul className="mt-3 space-y-1">
                 {files.map((file, index) => (
                   <li
@@ -621,17 +778,35 @@ export function BulkEmailComposer({
                   </li>
                 ))}
               </ul>
+              <p className="mt-2 text-xs text-gray-500">
+                Attached files are not stored in drafts. Re-attach them before
+                you send.
+              </p>
+              </>
             )}
           </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => void loadPreview()}
-            className="text-sm text-gray-700 hover:underline"
-          >
-            Preview
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void loadPreview()}
+              className="text-sm text-gray-700 hover:underline"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => void handleSaveDraft()}
+              className="text-sm text-gray-700 hover:underline disabled:opacity-50"
+            >
+              Save as draft
+            </button>
+            {draftStatus ? (
+              <span className="text-xs text-gray-500">{draftStatus}</span>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

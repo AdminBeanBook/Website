@@ -1,5 +1,6 @@
 import { BulkEmailComposer } from "@/components/admin/BulkEmailComposer";
 import { requireAdminSession } from "@/lib/auth";
+import { serializeDraft } from "@/lib/email/drafts";
 import { ensureEmailSettings, getEmailSenders } from "@/lib/email/senders";
 import { isEmailConfigured } from "@/lib/email/send";
 import { getSiteConfig } from "@/lib/site-config";
@@ -7,25 +8,29 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 
 type PageProps = {
-  searchParams: Promise<{ template?: string }>;
+  searchParams: Promise<{ template?: string; draft?: string }>;
 };
 
 export default async function AdminEmailComposePage({ searchParams }: PageProps) {
   const admin = await requireAdminSession();
   if (!admin) redirect("/admin/login");
 
-  const { template: templateId } = await searchParams;
+  const { template: templateId, draft: draftId } = await searchParams;
 
   await ensureEmailSettings();
-  const [senders, colors, contactTags, templates, prefill] = await Promise.all([
-    getEmailSenders(),
-    getSiteConfig("published"),
-    prisma.contactTag.findMany({ orderBy: { name: "asc" } }),
-    prisma.emailTemplate.findMany({ orderBy: { name: "asc" } }),
-    templateId
-      ? prisma.emailTemplate.findUnique({ where: { id: templateId } })
-      : null,
-  ]);
+  const [senders, colors, contactTags, templates, prefill, draft] =
+    await Promise.all([
+      getEmailSenders(),
+      getSiteConfig("published"),
+      prisma.contactTag.findMany({ orderBy: { name: "asc" } }),
+      prisma.emailTemplate.findMany({ orderBy: { name: "asc" } }),
+      !draftId && templateId
+        ? prisma.emailTemplate.findUnique({ where: { id: templateId } })
+        : null,
+      draftId
+        ? prisma.emailDraft.findUnique({ where: { id: draftId } })
+        : null,
+    ]);
 
   return (
     <BulkEmailComposer
@@ -55,6 +60,7 @@ export default async function AdminEmailComposePage({ searchParams }: PageProps)
             }
           : null
       }
+      initialDraft={draft ? serializeDraft(draft) : null}
     />
   );
 }
