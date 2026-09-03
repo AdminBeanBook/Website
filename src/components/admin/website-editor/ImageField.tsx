@@ -22,7 +22,15 @@ export function ImageField({ label, value, onChange }: ImageFieldProps) {
 
     try {
       const res = await fetch("/api/admin/media", { method: "POST", body: form });
-      const data = (await res.json()) as { url?: string; error?: string };
+      const text = await res.text();
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = text ? (JSON.parse(text) as { url?: string; error?: string }) : {};
+      } catch {
+        throw new Error(
+          `Upload failed (${res.status}). Try a JPEG or PNG under 3 MB.`,
+        );
+      }
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Upload failed");
       }

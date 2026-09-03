@@ -41,6 +41,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:filename",
+        destination: "/api/media/:filename",
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

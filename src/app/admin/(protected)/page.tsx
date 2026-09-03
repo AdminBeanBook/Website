@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 
 export default async function AdminDashboardPage() {
   const [
-    orderCount,
+    unfulfilledOrderCount,
     customerCount,
     unreadMessages,
     activeDiscounts,
@@ -13,7 +13,9 @@ export default async function AdminDashboardPage() {
     quickLinks,
     calendarEvents,
   ] = await Promise.all([
-    prisma.order.count(),
+    prisma.order.count({
+      where: { status: "paid", labelUrl: null },
+    }),
     prisma.customer.count(),
     prisma.contactSubmission.count({ where: { read: false } }),
     prisma.discountCode.count({ where: { active: true } }),
@@ -32,7 +34,7 @@ export default async function AdminDashboardPage() {
   });
 
   const cards = [
-    { label: "Orders", value: orderCount, href: "/admin/orders" },
+    { label: "Unfulfilled orders", value: unfulfilledOrderCount, href: "/admin/orders?tab=unfulfilled" },
     { label: "Customers", value: customerCount, href: "/admin/settings/customers" },
     { label: "Unread messages", value: unreadMessages, href: "/admin/messages" },
     { label: "Active discount codes", value: activeDiscounts, href: "/admin/settings/discounts" },

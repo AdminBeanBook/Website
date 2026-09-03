@@ -327,6 +327,15 @@ model AdminLink {
   updatedAt DateTime @updatedAt
 }
 
+/** Uploaded site images (logos, section photos). Served from /uploads/:filename. */
+model MediaFile {
+  id        String   @id @default(cuid())
+  filename  String   @unique
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 /** Admin calendar: tax deadlines and other reminders. */
 model CalendarEvent {
   id              String   @id @default(cuid())

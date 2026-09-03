@@ -123,10 +123,17 @@ export function PartnerShopEditor({
           method: "POST",
           body: form,
         });
-        const uploadData = (await uploadRes.json()) as {
-          url?: string;
-          error?: string;
-        };
+        const uploadText = await uploadRes.text();
+        let uploadData: { url?: string; error?: string } = {};
+        try {
+          uploadData = uploadText
+            ? (JSON.parse(uploadText) as { url?: string; error?: string })
+            : {};
+        } catch {
+          throw new Error(
+            `Logo upload failed (${uploadRes.status}). Try a JPEG or PNG under 3 MB.`,
+          );
+        }
         if (!uploadRes.ok || !uploadData.url) {
           throw new Error(uploadData.error ?? "Logo upload failed");
         }
