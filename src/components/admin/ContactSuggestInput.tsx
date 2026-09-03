@@ -5,6 +5,7 @@ import { formatContactAddress } from "@/lib/contacts/address";
 
 export type ContactSuggestion = {
   id: string;
+  company: string | null;
   name: string;
   email: string | null;
   phone: string | null;
@@ -162,6 +163,9 @@ export function ContactSuggestInput({
                   onMouseEnter={() => setHighlight(index)}
                   onClick={() => pick(contact)}
                 >
+                  {contact.company ? (
+                    <span className="text-xs text-gray-500">{contact.company}</span>
+                  ) : null}
                   <span className="font-medium text-gray-900">{contact.name}</span>
                   <span className="text-xs text-gray-500">
                     {[contact.email, contact.phone].filter(Boolean).join(" · ") ||

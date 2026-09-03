@@ -19,6 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { id } = await context.params;
   const body = (await request.json()) as {
+    company?: string | null;
     name?: string;
     email?: string | null;
     phone?: string | null;
@@ -36,6 +37,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   };
 
   const data: {
+    company?: string | null;
     name?: string;
     email?: string | null;
     phone?: string | null;
@@ -52,6 +54,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     addressCountry?: string | null;
   } = {};
 
+  if (body.company !== undefined) data.company = optionalText(body.company);
   if (body.name !== undefined) {
     const name = body.name.trim();
     if (!name) {

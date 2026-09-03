@@ -19,6 +19,7 @@ export default async function ContactsSettingsPage() {
     <ContactsManager
         initialContacts={contacts.map((c) => ({
           id: c.id,
+          company: c.company,
           name: c.name,
           email: c.email,
           phone: c.phone,

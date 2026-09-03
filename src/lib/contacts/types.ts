@@ -8,6 +8,7 @@ export type ContactTagRow = {
 
 export type ContactRow = {
   id: string;
+  company: string | null;
   name: string;
   email: string | null;
   phone: string | null;

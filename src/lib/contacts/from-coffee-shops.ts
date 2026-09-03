@@ -53,6 +53,11 @@ export async function syncCoffeeShopsToContacts(options?: {
   const byName = new Map(
     existing.map((c) => [c.name.trim().toLowerCase(), c]),
   );
+  const byCompany = new Map(
+    existing
+      .filter((c) => c.company)
+      .map((c) => [c.company!.trim().toLowerCase(), c]),
+  );
 
   let created = 0;
   let updated = 0;
@@ -64,7 +69,9 @@ export async function syncCoffeeShopsToContacts(options?: {
     const email = shop.email?.trim().toLowerCase() || null;
     const notes = shopNotes(shop);
     const match =
-      (email ? byEmail.get(email) : undefined) ?? byName.get(name.toLowerCase());
+      (email ? byEmail.get(email) : undefined) ??
+      byCompany.get(name.toLowerCase()) ??
+      byName.get(name.toLowerCase());
 
     if (match) {
       const hasTag = match.tags.some((t) => t.id === tag.id);
@@ -72,7 +79,8 @@ export async function syncCoffeeShopsToContacts(options?: {
         where: { id: match.id },
         data: {
           active: true,
-          name: name || match.name,
+          company: name,
+          name: match.name,
           email: email || match.email,
           notes: match.notes?.trim() ? match.notes : notes || null,
           ...(!hasTag ? { tags: { connect: { id: tag.id } } } : {}),
@@ -80,6 +88,12 @@ export async function syncCoffeeShopsToContacts(options?: {
         include: { tags: { select: { id: true } } },
       });
       byName.set(updatedContact.name.trim().toLowerCase(), updatedContact);
+      if (updatedContact.company) {
+        byCompany.set(
+          updatedContact.company.trim().toLowerCase(),
+          updatedContact,
+        );
+      }
       if (updatedContact.email) {
         byEmail.set(updatedContact.email.trim().toLowerCase(), updatedContact);
       }
@@ -89,6 +103,7 @@ export async function syncCoffeeShopsToContacts(options?: {
 
     const createdContact = await prisma.contact.create({
       data: {
+        company: name,
         name,
         email,
         phone: null,
@@ -99,6 +114,7 @@ export async function syncCoffeeShopsToContacts(options?: {
       include: { tags: { select: { id: true } } },
     });
     byName.set(name.toLowerCase(), createdContact);
+    byCompany.set(name.toLowerCase(), createdContact);
     if (email) byEmail.set(email, createdContact);
     created += 1;
   }

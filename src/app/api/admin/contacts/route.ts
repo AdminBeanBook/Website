@@ -27,6 +27,7 @@ export async function GET(request: Request) {
             active: true,
             OR: [
               { name: { contains: q, mode: "insensitive" as const } },
+              { company: { contains: q, mode: "insensitive" as const } },
               { email: { contains: q, mode: "insensitive" as const } },
               { phone: { contains: q, mode: "insensitive" as const } },
               { addressName: { contains: q, mode: "insensitive" as const } },
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as {
+    company?: string;
     name?: string;
     email?: string;
     phone?: string;
@@ -153,6 +155,7 @@ export async function POST(request: Request) {
 
     const contact = await prisma.contact.create({
       data: {
+        company: body.company?.trim() || null,
         name,
         email,
         phone: body.phone?.trim() || null,

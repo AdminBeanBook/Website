@@ -25,6 +25,7 @@ model EmailSettings {
 
 model Contact {
   id             String       @id @default(cuid())
+  company        String?
   name           String
   email          String?
   phone          String?

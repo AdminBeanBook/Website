@@ -86,14 +86,18 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
     if (contact.phone) setCustomerPhone(contact.phone);
     setEmailTaxExempt(Boolean(contact.taxExempt));
     if (contact.addressLine1?.trim()) {
-      setShippingName(contact.addressName?.trim() || contact.name);
+      setShippingName(
+        contact.addressName?.trim() ||
+          contact.company?.trim() ||
+          contact.name,
+      );
       setShippingLine1(contact.addressLine1);
       setShippingLine2(contact.addressLine2 ?? "");
       setShippingCity(contact.addressCity ?? "");
       setShippingState(contact.addressState ?? "");
       setShippingPostal(contact.addressPostal ?? "");
     } else if (!shippingName.trim()) {
-      setShippingName(contact.name);
+      setShippingName(contact.company?.trim() || contact.name);
     }
   }
 

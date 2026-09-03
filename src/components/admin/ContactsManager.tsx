@@ -108,6 +108,7 @@ export function ContactsManager({
   const [tags] = useState(initialTags);
   const [filterTagId, setFilterTagId] = useState("");
   const [query, setQuery] = useState("");
+  const [company, setCompany] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -126,6 +127,7 @@ export function ContactsManager({
       }
       if (!q) return true;
       return (
+        (c.company?.toLowerCase().includes(q) ?? false) ||
         c.name.toLowerCase().includes(q) ||
         (c.email?.toLowerCase().includes(q) ?? false) ||
         (c.phone?.toLowerCase().includes(q) ?? false) ||
@@ -153,6 +155,7 @@ export function ContactsManager({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        company: company || undefined,
         name,
         email: email || undefined,
         phone: phone || undefined,
@@ -178,6 +181,7 @@ export function ContactsManager({
         updatedAt: data.updatedAt ?? new Date().toISOString(),
       },
     ]);
+    setCompany("");
     setName("");
     setEmail("");
     setPhone("");
@@ -247,6 +251,15 @@ export function ContactsManager({
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Add contact</h2>
         <form onSubmit={handleAdd} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="text-xs font-medium text-gray-600">Company</label>
+            <input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Coffee shop or business name"
+              className={inputClass}
+            />
+          </div>
           <div>
             <label className="text-xs font-medium text-gray-600">Name</label>
             <input
@@ -344,7 +357,7 @@ export function ContactsManager({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, email, phone, address, notes, or tag…"
+              placeholder="Search by company, name, email, phone, address, notes, or tag…"
               className="min-w-[14rem] flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm sm:min-w-[18rem]"
             />
             {tags.length > 0 && (
@@ -409,6 +422,7 @@ function ContactRowEditor({
   onRemove: (c: ContactRow) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [company, setCompany] = useState(contact.company ?? "");
   const [name, setName] = useState(contact.name);
   const [email, setEmail] = useState(contact.email ?? "");
   const [phone, setPhone] = useState(contact.phone ?? "");
@@ -424,6 +438,7 @@ function ContactRowEditor({
   }
 
   function startEdit() {
+    setCompany(contact.company ?? "");
     setName(contact.name);
     setEmail(contact.email ?? "");
     setPhone(contact.phone ?? "");
@@ -435,6 +450,7 @@ function ContactRowEditor({
 
   async function save() {
     await onUpdate(contact, {
+      company: company || null,
       name,
       email: email || null,
       phone: phone || null,
@@ -450,6 +466,9 @@ function ContactRowEditor({
     return (
       <li className="flex flex-wrap items-start justify-between gap-3 py-4">
         <div className="min-w-0 flex-1">
+          {contact.company ? (
+            <p className="text-sm text-gray-600">{contact.company}</p>
+          ) : null}
           <p className="font-medium text-gray-900">
             {contact.name}
             {!contact.active && (
@@ -511,6 +530,12 @@ function ContactRowEditor({
 
   return (
     <li className="space-y-2 border-l-2 border-brand-green py-4 pl-3">
+      <input
+        value={company}
+        onChange={(e) => setCompany(e.target.value)}
+        className={inputClass}
+        placeholder="Company"
+      />
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}

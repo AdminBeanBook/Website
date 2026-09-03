@@ -235,6 +235,7 @@ export function mapContactCsvRow(row: Record<string, string>) {
   if (!name) return null;
 
   return {
+    company: company || null,
     name,
     email: email || null,
     phone: cell(row, "phone") || null,
@@ -312,6 +313,7 @@ export async function importContactsFromCsv(
           data: {
             active: true,
             name: mapped.name || existing.name,
+            company: mapped.company || existing.company,
             email: mapped.email || existing.email,
             phone: mapped.phone || existing.phone,
             notes: mapped.notes || existing.notes,
@@ -327,6 +329,7 @@ export async function importContactsFromCsv(
       await prisma.contact.create({
         data: {
           name: mapped.name,
+          company: mapped.company,
           email: mapped.email,
           phone: mapped.phone,
           notes: mapped.notes,
