@@ -311,6 +311,34 @@ export function BulkEmailComposer({
     setEditorKey((key) => key + 1);
   }
 
+  function resetComposer() {
+    skipPersistRef.current = true;
+    subjectRef.current = "";
+    audienceRef.current = null;
+    customEmailsRef.current = "";
+    tagIdsRef.current = [];
+    draftHtmlRef.current = EMAIL_TEMPLATE_STARTER;
+    draftIdRef.current = null;
+    setSubject("");
+    setAudience(null);
+    setSelectedTagIds([]);
+    setCustomEmails("");
+    setRecipientCount(null);
+    setRecipientPreview([]);
+    setSelectedTemplateId("");
+    setEditorHtml(EMAIL_TEMPLATE_STARTER);
+    setFiles([]);
+    setSaveOpen(false);
+    setSaveName("");
+    setPreviewHtml(null);
+    setConfirmSend(false);
+    setDraftId(null);
+    setDraftStatus(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    window.history.replaceState(null, "", "/admin/email");
+    skipPersistRef.current = false;
+  }
+
   function loadTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
     setMessage(null);
@@ -387,6 +415,9 @@ export function BulkEmailComposer({
     setMessage(null);
     setError(null);
     setConfirmSend(false);
+    if (!testOnly) {
+      skipPersistRef.current = true;
+    }
     let attachments:
       | { filename: string; content: string; type: string }[]
       | undefined;
@@ -403,6 +434,7 @@ export function BulkEmailComposer({
     } catch {
       setSending(false);
       setError("Could not read an attached file");
+      if (!testOnly) skipPersistRef.current = false;
       return;
     }
     const res = await fetch("/api/admin/email/send", {
@@ -431,6 +463,7 @@ export function BulkEmailComposer({
     setSending(false);
 
     if (!res.ok) {
+      if (!testOnly) skipPersistRef.current = false;
       setError(data.error ?? "Send failed");
       return;
     }
@@ -445,6 +478,7 @@ export function BulkEmailComposer({
     const failed = data.failureCount ?? 0;
     const summary = `${prefix}Sent to ${data.successCount ?? 0} of ${data.recipientCount ?? 0}`;
     if (failed > 0) {
+      skipPersistRef.current = false;
       setError(
         `${summary} (${failed} failed)${
           data.errors?.length ? ` — ${data.errors.join("; ")}` : ""
@@ -452,16 +486,12 @@ export function BulkEmailComposer({
       );
       return;
     }
-    setMessage(summary);
-    skipPersistRef.current = true;
     const id = draftIdRef.current;
     if (id) {
       void fetch(`/api/admin/email/drafts/${id}`, { method: "DELETE" });
     }
-    draftIdRef.current = null;
-    setDraftId(null);
-    setDraftStatus(null);
-    window.history.replaceState(null, "", "/admin/email");
+    resetComposer();
+    setMessage(summary);
   }
 
   async function saveTemplate() {
