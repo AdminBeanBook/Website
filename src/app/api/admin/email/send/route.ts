@@ -3,6 +3,8 @@ import { requireAdminSession } from "@/lib/auth";
 import { sendBulkEmail, type EmailAttachment } from "@/lib/email/send";
 import type { EmailAudience } from "@/lib/email/recipients";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const admin = await requireAdminSession();
   if (!admin) {
