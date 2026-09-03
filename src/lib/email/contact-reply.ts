@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { getSiteConfig } from "@/lib/site-config";
 import { getEmailSenders, getSenderByKey } from "@/lib/email/senders";
-import { wrapEmailHtml } from "@/lib/email/templates";
+import { emailOptionsFromSiteConfig, wrapEmailHtml } from "@/lib/email/templates";
 
 export type SendContactReplyInput = {
   senderKey: string;
@@ -73,11 +73,7 @@ export async function sendContactReply(
   const bodyHtml =
     textToHtml(input.bodyText) +
     quotedOriginalHtml(input.originalMessage, input.originalDate);
-  const html = wrapEmailHtml(bodyHtml, {
-    colors: site.colors,
-    logoUrl: site.images.logo,
-    siteName: site.site.name,
-  });
+  const html = wrapEmailHtml(bodyHtml, emailOptionsFromSiteConfig(site));
 
   const resend = getResend();
   if (!resend) {

@@ -62,12 +62,28 @@ export type SiteInfo = {
   instagram: string;
 };
 
+export type EmailBranding = {
+  /** Logo shown at the top of the email shell */
+  logoUrl: string;
+  /** Background color behind the logo strip */
+  headerColor: string;
+  /** Outer background + footer background */
+  backgroundColor: string;
+  /** Accent border between body and footer */
+  accentColor: string;
+  /** Footer tagline (e.g. "Denver coffee passbook") */
+  tagline: string;
+  /** Signature line above the footer (e.g. "— The Bean Book Team") */
+  signature: string;
+};
+
 export type SiteConfig = {
   site: SiteInfo;
   colors: BrandColors;
   images: SiteImages;
   nav: NavLinkConfig[];
   buttons: SiteButtonConfig[];
+  emailBranding?: EmailBranding;
 };
 
 export type PageTemplate =

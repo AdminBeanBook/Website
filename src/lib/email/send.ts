@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { getSiteConfig } from "@/lib/site-config";
 import { getEmailSenders, getSenderByKey } from "@/lib/email/senders";
-import { wrapEmailHtml } from "@/lib/email/templates";
+import { emailOptionsFromSiteConfig, wrapEmailHtml } from "@/lib/email/templates";
 import {
   resolveRecipients,
   type EmailAudience,
@@ -307,12 +307,7 @@ export async function sendBulkEmail(
   }
 
   const site = await getSiteConfig("published");
-  const html = wrapEmailHtml(input.htmlBody, {
-    colors: site.colors,
-    logoUrl: site.images.logo,
-    siteName: site.site.name,
-    tagline: "Denver coffee passbook",
-  });
+  const html = wrapEmailHtml(input.htmlBody, emailOptionsFromSiteConfig(site));
 
   let recipients = input.testOnly
     ? [{ email: input.testEmail?.trim() || input.sentByEmail }]

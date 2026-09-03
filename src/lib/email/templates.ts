@@ -1,4 +1,4 @@
-import type { BrandColors } from "@/lib/site-config/types";
+import type { BrandColors, EmailBranding } from "@/lib/site-config/types";
 import { IMAGES, SITE } from "@/lib/site";
 
 export type WrapEmailOptions = {
@@ -6,6 +6,8 @@ export type WrapEmailOptions = {
   logoUrl?: string;
   siteName?: string;
   tagline?: string;
+  signature?: string;
+  emailBranding?: EmailBranding;
 };
 
 function isBrandColors(
@@ -40,14 +42,16 @@ export function wrapEmailHtml(
     ? { colors: options }
     : (options ?? {});
 
+  const eb = opts.emailBranding;
   const colors = opts.colors;
-  const green = colors?.green ?? "#1e3a3a";
-  const cream = colors?.cream ?? "#e5d8c1";
-  const accent = colors?.accent ?? "#c47a3a";
+  const green = eb?.headerColor || colors?.green || "#1e3a3a";
+  const cream = eb?.backgroundColor || colors?.cream || "#e5d8c1";
+  const accent = eb?.accentColor || colors?.accent || "#c47a3a";
   const text = bodyTextColor(colors);
   const siteName = opts.siteName?.trim() || SITE.name;
-  const tagline = opts.tagline?.trim() || "Denver coffee passbook";
-  const logoUrl = opts.logoUrl?.trim() || IMAGES.logo;
+  const tagline = eb?.tagline ?? opts.tagline?.trim() ?? "Denver coffee passbook";
+  const signature = eb?.signature ?? opts.signature ?? "";
+  const logoUrl = eb?.logoUrl?.trim() || opts.logoUrl?.trim() || IMAGES.logo;
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -96,10 +100,15 @@ export function wrapEmailHtml(
           <td class="bb-body" bgcolor="#ffffff" style="padding:40px 48px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:${text};background-color:#ffffff;">
             ${bodyHtml}
           </td>
-        </tr>
+        </tr>${signature ? `
+        <tr>
+          <td bgcolor="#ffffff" style="padding:0 48px 24px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:${text};background-color:#ffffff;">
+            ${signature}
+          </td>
+        </tr>` : ""}
         <tr>
           <td align="center" bgcolor="${cream}" style="padding:20px 48px;background-color:${cream};border-top:3px solid ${accent};font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${text};">
-            ${siteName} · ${tagline}
+            ${siteName}${tagline ? ` · ${tagline}` : ""}
           </td>
         </tr>
       </table>
@@ -110,3 +119,18 @@ export function wrapEmailHtml(
 }
 
 export const EMAIL_TEMPLATE_STARTER = `<p></p>`;
+
+/** Build WrapEmailOptions from a SiteConfig. All email callers should use this. */
+export function emailOptionsFromSiteConfig(site: {
+  colors: BrandColors;
+  images: { logo: string };
+  site: { name: string };
+  emailBranding?: EmailBranding;
+}): WrapEmailOptions {
+  return {
+    colors: site.colors,
+    logoUrl: site.images.logo,
+    siteName: site.site.name,
+    emailBranding: site.emailBranding,
+  };
+}

@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { getEmailSenders } from "@/lib/email/senders";
-import { wrapEmailHtml } from "@/lib/email/templates";
+import { emailOptionsFromSiteConfig, wrapEmailHtml } from "@/lib/email/templates";
 import { getSiteConfig } from "@/lib/site-config";
 
 type OrderNotifyFields = {
@@ -83,11 +83,7 @@ export async function notifyNewOrderEmail(
       subject: complimentary
         ? `Complimentary order from ${who}`
         : `New order — $${amount} from ${who}`,
-      html: wrapEmailHtml(bodyHtml, {
-        colors: site.colors,
-        logoUrl: site.images.logo,
-        siteName: site.site.name,
-      }),
+      html: wrapEmailHtml(bodyHtml, emailOptionsFromSiteConfig(site)),
     });
 
     if (error) {

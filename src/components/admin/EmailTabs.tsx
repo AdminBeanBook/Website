@@ -7,6 +7,7 @@ const TABS = [
   { href: "/admin/email", label: "Compose", exact: true },
   { href: "/admin/email/drafts", label: "Drafts", exact: false },
   { href: "/admin/email/templates", label: "Templates", exact: false },
+  { href: "/admin/email/branding", label: "Branding", exact: false },
   { href: "/admin/email/sent", label: "Sent", exact: false },
 ] as const;
 

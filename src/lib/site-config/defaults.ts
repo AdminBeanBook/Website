@@ -1,5 +1,14 @@
 import { NAV_LINKS, SITE, IMAGES } from "@/lib/site";
-import type { SiteConfig } from "@/lib/site-config/types";
+import type { EmailBranding, SiteConfig } from "@/lib/site-config/types";
+
+export const DEFAULT_EMAIL_BRANDING: EmailBranding = {
+  logoUrl: IMAGES.logo,
+  headerColor: "#1e3a3a",
+  backgroundColor: "#e5d8c1",
+  accentColor: "#c47a3a",
+  tagline: "Denver coffee passbook",
+  signature: "",
+};
 
 export const SITE_SETTINGS_ID = "default";
 

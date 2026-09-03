@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import {
+  DEFAULT_EMAIL_BRANDING,
   DEFAULT_SITE_CONFIG,
   SITE_SETTINGS_ID,
 } from "@/lib/site-config/defaults";
@@ -10,7 +11,8 @@ import type { SiteConfig } from "@/lib/site-config/types";
 export type SiteConfigVariant = "published" | "draft";
 
 export { DEFAULT_SITE_CONFIG, SITE_SETTINGS_ID };
-export type { SiteConfig, SiteButtonConfig, NavLinkConfig, BrandColors } from "@/lib/site-config/types";
+export type { SiteConfig, SiteButtonConfig, NavLinkConfig, BrandColors, EmailBranding } from "@/lib/site-config/types";
+export { DEFAULT_EMAIL_BRANDING } from "@/lib/site-config/defaults";
 export { BUTTON_PLACEMENTS } from "@/lib/site-config/types";
 
 function parseConfig(json: string | null | undefined): SiteConfig | null {
@@ -46,6 +48,10 @@ function mergeWithDefaults(partial: SiteConfig | null): SiteConfig {
     buttons: partial.buttons?.length
       ? partial.buttons
       : DEFAULT_SITE_CONFIG.buttons,
+    emailBranding: {
+      ...DEFAULT_EMAIL_BRANDING,
+      ...partial.emailBranding,
+    },
   };
   return migrateSiteConfigButtons(merged);
 }
