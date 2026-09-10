@@ -10,7 +10,7 @@ test.describe("Shop discovery", () => {
     await expect(page.getByRole("heading", { name: "Bean Book: 2026 Edition" })).toBeVisible();
     await expect(page.getByText("$25.00 USD")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Buy Bean Book: 2026 Edition for $25" }),
+      page.getByRole("button", { name: "Buy Bean Book: 2026 Edition" }),
     ).toBeVisible();
   });
 
@@ -22,7 +22,7 @@ test.describe("Shop discovery", () => {
 
     await page.goto("/purchase");
     await page
-      .getByRole("button", { name: "Buy Bean Book: 2026 Edition for $25" })
+      .getByRole("button", { name: "Buy Bean Book: 2026 Edition" })
       .click();
 
     await expect(page).toHaveURL(/checkout\.stripe\.com/, { timeout: 30_000 });

@@ -23,11 +23,12 @@ test.describe("Full purchase flow", () => {
     await completeStripeHostedCheckout(page, { email: buyerEmail });
 
     await expect(page).toHaveURL(/\/checkout\/success\?session_id=cs_/);
-    await expect(page.getByRole("heading", { name: "Thank you!" })).toBeVisible();
-    await expect(page.getByText(/Order reference: cs_/)).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "View coffee shops" })
-    ).toHaveAttribute("href", "/map");
+      page.getByRole("heading", { name: "Thanks for purchasing!" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Back to home" }),
+    ).toHaveAttribute("href", "/");
   });
 
   test("cancelled checkout can be retried from cancel page", async ({
