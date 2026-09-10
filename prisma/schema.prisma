@@ -350,3 +350,15 @@ model CalendarEvent {
 
   @@index([date])
 }
+
+/** Dedupes day-of calendar SMS reminders (one text per event occurrence). */
+model CalendarSmsDelivery {
+  id              String   @id @default(cuid())
+  eventId         String
+  occurrenceDate  String
+  toPhone         String
+  createdAt       DateTime @default(now())
+
+  @@unique([eventId, occurrenceDate])
+  @@index([occurrenceDate])
+}

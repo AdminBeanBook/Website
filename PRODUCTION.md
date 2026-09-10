@@ -87,6 +87,9 @@ Paste the printed `whsec_...` into `.env.local`, restart `npm run dev`, then pay
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Used on first `db:seed` only |
 | `SHIPPO_API_TOKEN` | **Live** token from Shippo (`shippo_live_...`) |
 | `SHIP_FROM_*` | Real fulfillment address; `SHIP_FROM_PHONE` and `SHIP_FROM_EMAIL` required for USPS |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | Twilio SMS for calendar day-of reminders |
+| `CALENDAR_SMS_TO` | Your mobile in E.164 (`+13035550100`) |
+| `CRON_SECRET` | Random string; Vercel Cron sends it as `Authorization: Bearer …` |
 
 ## 6. Deploy to Vercel
 

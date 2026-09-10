@@ -119,6 +119,8 @@ export function WebsiteEditor({
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [shopsVersion, setShopsVersion] = useState(0);
+  /** Local edits (e.g. uploads) not yet written to the draft API. */
+  const [editorDirty, setEditorDirty] = useState(false);
 
   const page = pages.find((p) => p.slug === selected) ?? pages[0];
   const draft = page ? draftPageFields(page) : null;
@@ -133,7 +135,8 @@ export function WebsiteEditor({
     : "/";
 
   const pageDirtyCount = pages.filter((p) => p.hasUnpublishedChanges).length;
-  const totalDirty = pageDirtyCount + (siteDirty ? 1 : 0);
+  const totalDirty =
+    pageDirtyCount + (siteDirty ? 1 : 0) + (editorDirty ? 1 : 0);
 
   const resolvedPage = useMemo(() => {
     if (!page || !draft) return null;
@@ -161,6 +164,7 @@ export function WebsiteEditor({
       setShowInNav(d.showInNav);
       setSections(sectionsForPage(nextPage, config));
       setSelection("__page");
+      setEditorDirty(false);
       setMessage(null);
     },
     [],
@@ -174,6 +178,7 @@ export function WebsiteEditor({
 
   function markSiteDirty() {
     setSiteDirty(true);
+    setEditorDirty(true);
   }
 
   async function saveSiteDraft(config: SiteConfig) {
@@ -198,7 +203,7 @@ export function WebsiteEditor({
     try {
       const flat = flattenSectionsToPageFields(sections, pageTemplate);
       const nextConfig = applyFlattenedImages(siteConfig, flat);
-      await fetch("/api/admin/pages", {
+      const res = await fetch("/api/admin/pages", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -211,9 +216,11 @@ export function WebsiteEditor({
           showInNav,
         }),
       });
+      if (!res.ok) throw new Error("Failed to save page draft");
       const listRes = await fetch("/api/admin/pages");
       if (listRes.ok) setPages(await listRes.json());
       await saveSiteDraft(nextConfig);
+      setEditorDirty(false);
       setMessage("Draft saved");
       router.refresh();
     } catch (err) {
@@ -222,6 +229,19 @@ export function WebsiteEditor({
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Persist the current page before switching so uploads/edits are not wiped. */
+  async function selectPage(nextSlug: string) {
+    if (nextSlug === selected || saving || publishing || discarding) return;
+    if (editorDirty) {
+      try {
+        await handleSaveDraft();
+      } catch {
+        return;
+      }
+    }
+    setSelected(nextSlug);
   }
 
   async function handlePublish() {
@@ -322,6 +342,7 @@ export function WebsiteEditor({
 
   function handleSectionChange(next: PageSection) {
     setSections((list) => list.map((s) => (s.id === next.id ? next : s)));
+    setEditorDirty(true);
   }
 
   function handleAddSection(type: PageSectionType) {
@@ -329,6 +350,7 @@ export function WebsiteEditor({
     setSections((list) => [...list, created]);
     setSelection(created.id);
     setRightPanelOpen(true);
+    setEditorDirty(true);
   }
 
   if (!page || !resolvedPage) return null;
@@ -419,15 +441,17 @@ export function WebsiteEditor({
                 <li key={p.slug}>
                   <button
                     type="button"
-                    onClick={() => setSelected(p.slug)}
-                    className={`flex w-full items-center justify-between gap-1 rounded-lg px-2 py-2 text-left text-xs ${
+                    onClick={() => void selectPage(p.slug)}
+                    disabled={saving || publishing || discarding}
+                    className={`flex w-full items-center justify-between gap-1 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-60 ${
                       selected === p.slug
                         ? "bg-white font-medium text-brand-green shadow-sm"
                         : "text-gray-700 hover:bg-white/80"
                     }`}
                   >
                     <span className="truncate">{p.slug}</span>
-                    {p.hasUnpublishedChanges ? (
+                    {p.hasUnpublishedChanges ||
+                    (p.slug === selected && editorDirty) ? (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                     ) : null}
                   </button>
@@ -487,15 +511,19 @@ export function WebsiteEditor({
                   setSelection(id);
                   setRightPanelOpen(true);
                 }}
-                onReorder={(from, to) => setSections((list) => moveSection(list, from, to))}
+                onReorder={(from, to) => {
+                  setSections((list) => moveSection(list, from, to));
+                  setEditorDirty(true);
+                }}
                 onAdd={handleAddSection}
-                onToggle={(id) =>
+                onToggle={(id) => {
                   setSections((list) =>
                     list.map((s) =>
                       s.id === id ? { ...s, enabled: !s.enabled } : s,
                     ),
-                  )
-                }
+                  );
+                  setEditorDirty(true);
+                }}
               />
             </div>
 
@@ -566,8 +594,14 @@ export function WebsiteEditor({
                 pageEnabled={pageEnabled}
                 showInNav={showInNav}
                 isSystemPage={page.isSystem}
-                onPageEnabledChange={setPageEnabled}
-                onShowInNavChange={setShowInNav}
+                onPageEnabledChange={(enabled) => {
+                  setPageEnabled(enabled);
+                  setEditorDirty(true);
+                }}
+                onShowInNavChange={(next) => {
+                  setShowInNav(next);
+                  setEditorDirty(true);
+                }}
                 onDeletePage={handleDeletePage}
                 onSectionChange={handleSectionChange}
                 onSiteConfigChange={(config) => {
@@ -577,7 +611,14 @@ export function WebsiteEditor({
                 onAfterShopsChange={() => setShopsVersion((v) => v + 1)}
               />
               {message ? (
-                <p className="mt-3 text-xs text-green-700" role="status">
+                <p
+                  className={`mt-3 text-xs ${
+                    message.startsWith("Failed")
+                      ? "text-red-600"
+                      : "text-green-700"
+                  }`}
+                  role="status"
+                >
                   {message}
                 </p>
               ) : null}
