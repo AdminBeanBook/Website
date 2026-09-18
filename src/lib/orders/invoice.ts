@@ -33,12 +33,17 @@ async function getOrCreateStripeCustomer(
 
 async function invoiceDescription(order: Order): Promise<string> {
   const product = await resolveProduct(order.productId);
+  const listCents = order.amountCents + (order.discountCents ?? 0);
   const books =
-    product.priceCents > 0 && order.amountCents % product.priceCents === 0
-      ? order.amountCents / product.priceCents
+    product.priceCents > 0 && listCents % product.priceCents === 0
+      ? listCents / product.priceCents
       : null;
   const qty = books && books > 1 ? ` (${books} books)` : "";
-  return `${product.name}${qty}`;
+  const discountNote =
+    order.discountCents > 0 && order.discountCode && order.discountCode !== "COMPLIMENTARY"
+      ? ` — ${order.discountCode}`
+      : "";
+  return `${product.name}${qty}${discountNote}`;
 }
 
 export type InvoicePreview = {

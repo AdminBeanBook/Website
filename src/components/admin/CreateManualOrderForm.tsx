@@ -30,6 +30,7 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
   const [lastName, setLastName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [discountPercentInput, setDiscountPercentInput] = useState("");
   const [shippingName, setShippingName] = useState("");
   const [shippingLine1, setShippingLine1] = useState("");
   const [shippingLine2, setShippingLine2] = useState("");
@@ -52,7 +53,24 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
   const complimentary = paymentMode === "complimentary";
   const customerName = joinContactName(firstName, lastName);
   const subtotalCents = (product?.priceCents ?? 0) * quantity;
-  const totalCents = complimentary ? 0 : subtotalCents;
+  const discountPercent = complimentary
+    ? 0
+    : Math.min(
+        100,
+        Math.max(
+          0,
+          discountPercentInput.trim() === ""
+            ? 0
+            : Number(discountPercentInput) || 0,
+        ),
+      );
+  const discountCents = complimentary
+    ? subtotalCents
+    : Math.min(
+        subtotalCents,
+        Math.round((subtotalCents * discountPercent) / 100),
+      );
+  const totalCents = complimentary ? 0 : Math.max(0, subtotalCents - discountCents);
   const shipReady = Boolean(
     shippingName.trim() &&
       shippingLine1.trim() &&
@@ -131,6 +149,7 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
           customerName: customerName || undefined,
           customerPhone: customerPhone || undefined,
           quantity,
+          discountPercent: complimentary ? undefined : discountPercent || undefined,
           shippingName: shippingName || undefined,
           shippingLine1: shippingLine1 || undefined,
           shippingLine2: shippingLine2 || undefined,
@@ -274,12 +293,48 @@ export function CreateManualOrderForm({ products }: CreateManualOrderFormProps) 
                     {formatMoney(subtotalCents)}
                   </dd>
                 </div>
-                {complimentary && (
+                {complimentary ? (
                   <div className="flex justify-between px-5 py-2.5">
                     <dt className="text-gray-600">Complimentary</dt>
                     <dd className="tabular-nums font-medium text-emerald-800">
                       −{formatMoney(subtotalCents)}
                     </dd>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 px-5 py-2.5">
+                    <label
+                      htmlFor="co-discount-percent"
+                      className="text-gray-600"
+                    >
+                      Discount
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <input
+                          id="co-discount-percent"
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="any"
+                          inputMode="decimal"
+                          placeholder="0"
+                          value={discountPercentInput}
+                          onChange={(e) =>
+                            setDiscountPercentInput(e.target.value)
+                          }
+                          className="w-20 rounded border border-gray-300 py-1 pl-2 pr-7 text-right text-sm tabular-nums focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+                          aria-label="Discount percent"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-500">
+                          %
+                        </span>
+                      </div>
+                      {discountCents > 0 && (
+                        <span className="w-20 text-right text-sm tabular-nums text-emerald-800">
+                          −{formatMoney(discountCents)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
                 <div className="flex justify-between px-5 py-3 text-base font-semibold">

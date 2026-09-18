@@ -19,13 +19,20 @@ export function getLineItemQuantity(
 ): number {
   const unit = unitPriceCents > 0 ? unitPriceCents : BEAN_BOOK_2026.priceCents;
   if (unit <= 0) return 1;
-  const basis =
-    order.amountCents > 0 ? order.amountCents : (order.discountCents ?? 0);
-  if (basis <= 0) return 1;
-  if (basis % unit === 0) {
-    const q = basis / unit;
-    return q >= 1 ? q : 1;
+  const discount = order.discountCents ?? 0;
+  // Prefer list total (amount + discount) so % discounts don't skew quantity.
+  const candidates = [order.amountCents + discount, order.amountCents, discount]
+    .filter((n) => n > 0);
+
+  for (const basis of candidates) {
+    if (basis % unit === 0) {
+      const q = basis / unit;
+      if (q >= 1) return q;
+    }
   }
+
+  const basis = candidates[0] ?? 0;
+  if (basis <= 0) return 1;
   return Math.max(1, Math.round(basis / unit));
 }
 

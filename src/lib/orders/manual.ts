@@ -10,6 +10,8 @@ export type CreateManualOrderInput = {
   customerName?: string;
   customerPhone?: string;
   quantity?: number;
+  /** Optional percent off (0–100). Ignored for complimentary orders. */
+  discountPercent?: number;
   shippingName?: string;
   shippingLine1?: string;
   shippingLine2?: string;
@@ -32,6 +34,25 @@ export async function createManualOrder(input: CreateManualOrderInput) {
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const product = await resolveProduct(input.productId);
   const listCents = product.priceCents * quantity;
+
+  const rawPercent = Number(input.discountPercent);
+  const discountPercent = complimentary
+    ? 0
+    : Number.isFinite(rawPercent)
+      ? Math.min(100, Math.max(0, rawPercent))
+      : 0;
+  const discountCents = complimentary
+    ? listCents
+    : Math.min(
+        listCents,
+        Math.round((listCents * discountPercent) / 100),
+      );
+  const amountCents = complimentary ? 0 : Math.max(0, listCents - discountCents);
+  const discountCode = complimentary
+    ? "COMPLIMENTARY"
+    : discountPercent > 0
+      ? `${formatDiscountPercent(discountPercent)}% OFF`
+      : null;
 
   if (complimentary) {
     const shipReady = Boolean(
@@ -82,9 +103,9 @@ export async function createManualOrder(input: CreateManualOrderInput) {
         ? `manual_comp_${crypto.randomUUID()}`
         : `manual_${crypto.randomUUID()}`,
       status: complimentary ? "paid" : "unpaid",
-      amountCents: complimentary ? 0 : listCents,
-      discountCents: complimentary ? listCents : 0,
-      discountCode: complimentary ? "COMPLIMENTARY" : null,
+      amountCents,
+      discountCents,
+      discountCode,
       productId: product.id,
       customerId: customer.id,
       customerEmail: email,
@@ -112,4 +133,10 @@ export async function createManualOrder(input: CreateManualOrderInput) {
   }
 
   return order;
+}
+
+function formatDiscountPercent(percent: number): string {
+  return Number.isInteger(percent)
+    ? String(percent)
+    : percent.toFixed(2).replace(/\.?0+$/, "");
 }
