@@ -114,7 +114,15 @@ const MAIN_ICONS = {
   "/admin/settings/customers": CustomersIcon,
 } as const;
 
-function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarBody({
+  onNavigate,
+  theme,
+  onToggleTheme,
+}: {
+  onNavigate?: () => void;
+  theme?: "light" | "dark";
+  onToggleTheme?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
@@ -174,6 +182,21 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-1 border-t border-black/5 px-3 py-3">
+        {onToggleTheme ? (
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[13px] text-gray-600 hover:bg-black/[0.04] hover:text-gray-900"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            <span>Appearance</span>
+            <span className="text-gray-500">
+              {theme === "dark" ? "Dark" : "Light"}
+            </span>
+          </button>
+        ) : null}
         <Link
           href="/"
           target="_blank"
@@ -190,15 +213,23 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 type AdminSidebarProps = {
   variant?: "static" | "drawer";
   onClose?: () => void;
+  theme?: "light" | "dark";
+  onToggleTheme?: () => void;
 };
 
 export function AdminSidebar({
   variant = "static",
   onClose,
+  theme,
+  onToggleTheme,
 }: AdminSidebarProps) {
   const panel = (
     <div className="flex h-full w-[15.5rem] shrink-0 flex-col bg-[#f1f1f1]">
-      <SidebarBody onNavigate={variant === "drawer" ? onClose : undefined} />
+      <SidebarBody
+        onNavigate={variant === "drawer" ? onClose : undefined}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+      />
     </div>
   );
 

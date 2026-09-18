@@ -74,3 +74,155 @@
     background-color: #fecaca;
   }
 }
+
+/* Admin-only dark mode (scoped; public site stays light) */
+.bb-admin-dark {
+  color-scheme: dark;
+  color: #e5e7eb;
+  background-color: #0f1115;
+}
+
+.bb-admin-dark .bg-\[\#f1f1f1\],
+.bb-admin-dark.bg-\[\#f1f1f1\] {
+  background-color: #0f1115 !important;
+}
+
+.bb-admin-dark .bg-white {
+  background-color: #171a21;
+}
+
+.bb-admin-dark .bg-gray-50 {
+  background-color: #14171d;
+}
+
+.bb-admin-dark .bg-gray-100 {
+  background-color: #1a1e26;
+}
+
+.bb-admin-dark .bg-gray-200 {
+  background-color: #262b36;
+}
+
+.bb-admin-dark .bg-neutral-300 {
+  background-color: #0a0c10;
+}
+
+.bb-admin-dark .hover\:bg-gray-50:hover {
+  background-color: #1c212b;
+}
+
+.bb-admin-dark .hover\:bg-gray-100:hover {
+  background-color: #222833;
+}
+
+.bb-admin-dark .hover\:bg-white:hover {
+  background-color: #1c212b;
+}
+
+.bb-admin-dark .hover\:bg-black\/\[0\.04\]:hover,
+.bb-admin-dark .hover\:bg-black\/\[0\.06\]:hover,
+.bb-admin-dark .hover\:bg-black\/5:hover {
+  background-color: rgb(255 255 255 / 0.06);
+}
+
+.bb-admin-dark .border-gray-50,
+.bb-admin-dark .border-gray-100,
+.bb-admin-dark .border-gray-200,
+.bb-admin-dark .border-gray-300 {
+  border-color: #2c3340;
+}
+
+.bb-admin-dark .border-black\/5,
+.bb-admin-dark .border-black\/\[0\.06\] {
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.bb-admin-dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+.bb-admin-dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2c3340;
+}
+
+.bb-admin-dark .text-gray-900,
+.bb-admin-dark .text-gray-800 {
+  color: #f3f4f6;
+}
+
+.bb-admin-dark .text-gray-700 {
+  color: #d1d5db;
+}
+
+.bb-admin-dark .text-gray-600 {
+  color: #9ca3af;
+}
+
+.bb-admin-dark .text-gray-500 {
+  color: #9ca3af;
+}
+
+.bb-admin-dark .text-gray-400,
+.bb-admin-dark .text-gray-300 {
+  color: #6b7280;
+}
+
+.bb-admin-dark .shadow-sm,
+.bb-admin-dark .shadow,
+.bb-admin-dark .shadow-xl {
+  --tw-shadow-color: rgb(0 0 0 / 0.45);
+}
+
+.bb-admin-dark input:not([type="checkbox"]):not([type="radio"]),
+.bb-admin-dark select,
+.bb-admin-dark textarea {
+  background-color: #12151b;
+  border-color: #2c3340;
+  color: #f3f4f6;
+}
+
+.bb-admin-dark input::placeholder,
+.bb-admin-dark textarea::placeholder {
+  color: #6b7280;
+}
+
+.bb-admin-dark .bg-white.font-medium,
+.bb-admin-dark .bg-white.shadow-sm {
+  background-color: #222833;
+  color: #f3f4f6;
+}
+
+/* Keep website editor preview light so CMS edits match the live site */
+.bb-admin-dark .bb-editor-preview {
+  color-scheme: light;
+  color: #2d3e40;
+}
+
+.bb-admin-dark .bb-editor-preview .bg-white {
+  background-color: #fff;
+}
+
+.bb-admin-dark .bb-editor-preview .bg-gray-50 {
+  background-color: #f9fafb;
+}
+
+.bb-admin-dark .bb-editor-preview .bg-gray-100 {
+  background-color: #f3f4f6;
+}
+
+.bb-admin-dark .bb-editor-preview .text-gray-900,
+.bb-admin-dark .bb-editor-preview .text-gray-800 {
+  color: #111827;
+}
+
+.bb-admin-dark .bb-editor-preview .text-gray-700 {
+  color: #374151;
+}
+
+.bb-admin-dark .bb-editor-preview .text-gray-600,
+.bb-admin-dark .bb-editor-preview .text-gray-500 {
+  color: #6b7280;
+}
+
+.bb-admin-dark .bb-editor-preview .border-gray-100,
+.bb-admin-dark .bb-editor-preview .border-gray-200,
+.bb-admin-dark .bb-editor-preview .border-gray-300 {
+  border-color: #e5e7eb;
+}
