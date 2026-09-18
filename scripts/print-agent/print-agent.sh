@@ -65,7 +65,7 @@ process_once() {
   local response
   local batch="$WORKDIR/batch.tsv"
 
-  if ! response="$(curl -fsS -H "$auth_header" "${queue_url}?limit=10")"; then
+  if ! response="$(curl -fsS --http1.1 -H "$auth_header" "${queue_url}?limit=10")"; then
     log "ERROR failed to fetch queue"
     return 1
   fi
@@ -102,7 +102,7 @@ for item in data.get("items", []):
     outfile="${WORKDIR}/${order_id}.${ext}"
 
     log "download order=${order_id} email=${email} tracking=${tracking}"
-    if ! curl -fsSL "$label_url" -o "$outfile"; then
+    if ! curl -fsSL --http1.1 "$label_url" -o "$outfile"; then
       log "ERROR download failed order=${order_id}"
       continue
     fi
@@ -116,7 +116,7 @@ for item in data.get("items", []):
       continue
     fi
 
-    if curl -fsS -X POST -H "$auth_header" \
+    if curl -fsS --http1.1 -X POST -H "$auth_header" \
       "${queue_url}/${order_id}/printed" >/dev/null; then
       log "printed order=${order_id}"
     else
