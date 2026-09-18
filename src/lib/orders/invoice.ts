@@ -125,20 +125,36 @@ export async function prepareStripeInvoiceForOrder(orderId: string) {
     const existing = await stripe.invoices.retrieve(order.stripeInvoiceId, {
       expand: ["lines"],
     });
-    const invoice =
-      existing.status === "draft"
-        ? await stripe.invoices.finalizeInvoice(existing.id)
-        : existing;
-    if (!order.invoiceHostedUrl && invoice.hosted_invoice_url) {
+    if (!invoiceMissingCharge(existing, order.amountCents)) {
+      const invoice =
+        existing.status === "draft"
+          ? await stripe.invoices.finalizeInvoice(existing.id)
+          : existing;
+      if (!order.invoiceHostedUrl && invoice.hosted_invoice_url) {
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { invoiceHostedUrl: invoice.hosted_invoice_url },
+        });
+      }
+      return {
+        order,
+        preview: mapInvoicePreview(invoice, sent),
+      };
+    }
+
+    // Empty $0 invoice from older create flow — discard and rebuild.
+    if (!sent) {
+      await discardStripeInvoice(stripe, existing);
       await prisma.order.update({
         where: { id: orderId },
-        data: { invoiceHostedUrl: invoice.hosted_invoice_url },
+        data: { stripeInvoiceId: null, invoiceHostedUrl: null },
       });
+    } else {
+      return {
+        order,
+        preview: mapInvoicePreview(existing, sent),
+      };
     }
-    return {
-      order,
-      preview: mapInvoicePreview(invoice, sent),
-    };
   }
 
   const taxExempt = await contactTaxExemptForEmail(order.customerEmail);
@@ -178,35 +194,40 @@ export async function prepareStripeInvoiceForOrder(orderId: string) {
     });
   }
 
-  await stripe.invoiceItems.create(
-    {
-      customer: customer.id,
-      amount: order.amountCents,
-      currency: "usd",
-      description: await invoiceDescription(order),
-      tax_behavior: "exclusive",
-    },
-    { idempotencyKey: `bb-invoice-item-${orderId}` },
-  );
-
+  // Create the draft first, then attach the line item to it. Stripe's default
+  // pending_invoice_items_behavior is "exclude", so creating a pending item
+  // then an invoice leaves the invoice at $0.
   const created = await stripe.invoices.create(
     {
       customer: customer.id,
       collection_method: "send_invoice",
       days_until_due: INVOICE_DUE_DAYS,
       automatic_tax: { enabled: true },
+      pending_invoice_items_behavior: "exclude",
       metadata: {
         order_id: order.id,
         product_id: order.productId ?? BEAN_BOOK_2026.id,
       },
     },
-    { idempotencyKey: `bb-invoice-${orderId}` },
+    { idempotencyKey: `bb-invoice-draft-${orderId}-v2` },
+  );
+
+  await stripe.invoiceItems.create(
+    {
+      customer: customer.id,
+      invoice: created.id,
+      amount: order.amountCents,
+      currency: "usd",
+      description: await invoiceDescription(order),
+      tax_behavior: "exclusive",
+    },
+    { idempotencyKey: `bb-invoice-item-${orderId}-v2` },
   );
 
   const finalized = await stripe.invoices.finalizeInvoice(
     created.id,
-    undefined,
-    { idempotencyKey: `bb-invoice-finalize-${orderId}` },
+    { expand: ["lines"] },
+    { idempotencyKey: `bb-invoice-finalize-${orderId}-v2` },
   );
   const updated = await prisma.order.update({
     where: { id: orderId },
@@ -220,6 +241,40 @@ export async function prepareStripeInvoiceForOrder(orderId: string) {
     order: updated,
     preview: mapInvoicePreview(finalized, false),
   };
+}
+
+function invoiceMissingCharge(
+  invoice: {
+    total: number | null;
+    amount_due: number | null;
+    lines?: { data: { amount: number }[] } | null;
+  },
+  orderAmountCents: number,
+): boolean {
+  if (orderAmountCents <= 0) return false;
+  const lineTotal = (invoice.lines?.data ?? []).reduce(
+    (sum, line) => sum + line.amount,
+    0,
+  );
+  const total = invoice.total ?? invoice.amount_due ?? 0;
+  return lineTotal === 0 || total === 0;
+}
+
+async function discardStripeInvoice(
+  stripe: ReturnType<typeof getStripe>,
+  invoice: { id: string; status: string | null },
+) {
+  try {
+    if (invoice.status === "draft") {
+      await stripe.invoices.del(invoice.id);
+      return;
+    }
+    if (invoice.status === "open" || invoice.status === "uncollectible") {
+      await stripe.invoices.voidInvoice(invoice.id);
+    }
+  } catch {
+    // Best-effort cleanup; a new invoice will still be created.
+  }
 }
 
 /** Email a previously prepared invoice. Does not send until this is called. */
