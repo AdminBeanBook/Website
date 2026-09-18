@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDraftTopBar } from "@/components/admin/draft/AdminDraftTopBar";
 import { DraftSidebarCard } from "@/components/admin/draft/DraftSidebarCard";
+import { ImageField } from "@/components/admin/website-editor/ImageField";
 import { BEAN_BOOK_2026, slugifyProductId } from "@/lib/products/catalog";
 
 const FORM_ID = "create-product-form";
@@ -53,6 +53,11 @@ export function CreateProductForm({
       setLoading(false);
       return;
     }
+    if (!imageUrl.trim()) {
+      setError("Add a product image URL or upload an image");
+      setLoading(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -87,8 +92,6 @@ export function CreateProductForm({
 
   const inputClass =
     "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green";
-
-  const previewUrl = imageUrl.trim() || BEAN_BOOK_2026.imageUrl;
 
   return (
     <div className="space-y-4">
@@ -168,30 +171,11 @@ export function CreateProductForm({
                     className={inputClass}
                   />
                 </div>
-                <div>
-                  <label htmlFor="cp-image" className="mb-1 block text-sm font-medium">
-                    Image URL
-                  </label>
-                  <input
-                    id="cp-image"
-                    required
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
-                {previewUrl && (
-                  <div className="relative h-24 w-24 overflow-hidden rounded border border-gray-200">
-                    <Image
-                      src={previewUrl}
-                      alt="Preview"
-                      fill
-                      className="object-cover"
-                      sizes="96px"
-                    />
-                  </div>
-                )}
+                <ImageField
+                  label="Product image"
+                  value={imageUrl}
+                  onChange={setImageUrl}
+                />
               </div>
             </section>
 

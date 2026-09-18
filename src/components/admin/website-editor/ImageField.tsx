@@ -46,11 +46,11 @@ export function ImageField({ label, value, onChange }: ImageFieldProps) {
     <div className="space-y-2">
       <label className="block text-xs font-medium text-gray-600">{label}</label>
       <input
-        type="url"
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-        placeholder="https://… or upload"
+        placeholder="https://… or upload an image"
       />
       <div className="flex flex-wrap items-center gap-2">
         <button
