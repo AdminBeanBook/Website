@@ -9,7 +9,7 @@ import {
   getLineItemQuantity,
   getShipFromLocationLabel,
 } from "@/lib/orders/display";
-import { BEAN_BOOK_2026 } from "@/lib/products";
+import type { CatalogProduct } from "@/lib/products/catalog";
 
 type OrderFulfillmentCardProps = {
   order: Pick<
@@ -28,6 +28,7 @@ type OrderFulfillmentCardProps = {
   > & {
     packagePreset?: { name: string } | null;
   };
+  product: CatalogProduct;
   showShipping: boolean;
   hasShipTo: boolean;
   shippoConfigured: boolean;
@@ -38,6 +39,7 @@ type OrderFulfillmentCardProps = {
 
 export function OrderFulfillmentCard({
   order,
+  product,
   showShipping,
   hasShipTo,
   shippoConfigured,
@@ -46,8 +48,8 @@ export function OrderFulfillmentCard({
   defaultPackageId,
 }: OrderFulfillmentCardProps) {
   const fulfillment = getFulfillmentBadge(order);
-  const quantity = getLineItemQuantity(order);
-  const unitPrice = BEAN_BOOK_2026.priceCents;
+  const quantity = getLineItemQuantity(order, product.priceCents);
+  const unitPrice = product.priceCents;
   const lineTotal = unitPrice * quantity;
   const shipFrom = getShipFromLocationLabel();
   const shippingMethod =
@@ -80,15 +82,15 @@ export function OrderFulfillmentCard({
       <div className="flex gap-4 border-b border-gray-100 px-5 py-4">
         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
           <Image
-            src={BEAN_BOOK_2026.imageUrl}
-            alt={BEAN_BOOK_2026.name}
+            src={product.imageUrl}
+            alt={product.name}
             fill
             className="object-cover"
             sizes="56px"
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-gray-900">{BEAN_BOOK_2026.name}</p>
+          <p className="font-medium text-gray-900">{product.name}</p>
           <p className="mt-0.5 text-sm text-gray-500">
             {formatMoney(unitPrice)} × {quantity}
           </p>

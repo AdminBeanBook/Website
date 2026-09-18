@@ -526,6 +526,10 @@ export function SectionSettings({
             rows={2}
             className={inputClass}
           />
+          <p className="text-xs text-gray-500">
+            Other active catalog products (like the 2027 pre-order) also appear
+            on this section. Edit those in Admin → Products.
+          </p>
         </>
       ) : null}
       {section.type === "gallery" ? (

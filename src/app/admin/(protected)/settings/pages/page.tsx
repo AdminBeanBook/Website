@@ -11,17 +11,20 @@ import {
   getSiteConfig,
   siteConfigHasUnpublishedChanges,
 } from "@/lib/site-config";
+import { listCatalogProducts } from "@/lib/products";
 
 export default async function AdminPagesPage() {
   await ensurePagesSeeded();
   await ensureSiteSettings();
 
-  const [pages, publishedSite, draftSite, coffeeShops] = await Promise.all([
-    getAllPagesForAdmin(),
-    getSiteConfig("published"),
-    getSiteConfig("draft"),
-    listCoffeeShops(),
-  ]);
+  const [pages, publishedSite, draftSite, coffeeShops, catalogProducts] =
+    await Promise.all([
+      getAllPagesForAdmin(),
+      getSiteConfig("published"),
+      getSiteConfig("draft"),
+      listCoffeeShops(),
+      listCatalogProducts(true),
+    ]);
 
   const editorPages = pages.map((page) => ({
     ...page,
@@ -37,6 +40,7 @@ export default async function AdminPagesPage() {
         draftSite,
       )}
       initialCoffeeShops={coffeeShops}
+      catalogProducts={catalogProducts}
       mapEmbedUrl={getGoogleMapEmbedUrl()}
     />
   );

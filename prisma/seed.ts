@@ -2,7 +2,8 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import path from "path";
 import { PAGE_DEFAULTS } from "../src/lib/page-defaults";
-import { BEAN_BOOK_2026 } from "../src/lib/products";
+import { FALLBACK_CATALOG, BEAN_BOOK_2027 } from "../src/lib/products";
+import { IMAGES } from "../src/lib/site";
 import { DEFAULT_SITE_CONFIG, SITE_SETTINGS_ID } from "../src/lib/site-config/defaults";
 import { getDefaultSenders } from "../src/lib/email/senders";
 import { locationsToJson } from "../src/lib/coffee-shops";
@@ -60,19 +61,28 @@ async function main() {
     console.log("Default shipping package preset created.");
   }
 
-  await prisma.product.upsert({
-    where: { id: BEAN_BOOK_2026.id },
-    create: {
-      id: BEAN_BOOK_2026.id,
-      name: BEAN_BOOK_2026.name,
-      description: BEAN_BOOK_2026.description,
-      priceCents: BEAN_BOOK_2026.priceCents,
-      imageUrl: BEAN_BOOK_2026.imageUrl,
-      active: true,
+  for (const product of FALLBACK_CATALOG) {
+    await prisma.product.upsert({
+      where: { id: product.id },
+      create: {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        priceCents: product.priceCents,
+        imageUrl: product.imageUrl,
+        active: true,
+      },
+      update: {},
+    });
+  }
+  await prisma.product.updateMany({
+    where: {
+      id: BEAN_BOOK_2027.id,
+      imageUrl: IMAGES.productCover,
     },
-    update: {},
+    data: { imageUrl: BEAN_BOOK_2027.imageUrl },
   });
-  console.log("Catalog product seeded (existing edits preserved).");
+  console.log("Catalog products seeded (existing edits preserved).");
 
   const siteJson = JSON.stringify(DEFAULT_SITE_CONFIG);
   await prisma.siteSettings.upsert({
@@ -114,6 +124,28 @@ async function main() {
     });
   }
   console.log("Site settings and pages seeded (existing edits preserved).");
+
+  const purchaseDefault = PAGE_DEFAULTS.find((page) => page.slug === "purchase");
+  const legacyPurchaseSubtitle =
+    "The Bean Book: 2026 Edition is officially up for sale! Click on the book below to order yours today!";
+  if (purchaseDefault?.subtitle) {
+    const purchasePage = await prisma.pageContent.findUnique({
+      where: { slug: "purchase" },
+    });
+    if (purchasePage?.subtitle === legacyPurchaseSubtitle) {
+      await prisma.pageContent.update({
+        where: { slug: "purchase" },
+        data: {
+          subtitle: purchaseDefault.subtitle,
+          draftSubtitle:
+            purchasePage.draftSubtitle === legacyPurchaseSubtitle
+              ? purchaseDefault.subtitle
+              : purchasePage.draftSubtitle,
+        },
+      });
+      console.log("Purchase page subtitle updated for 2027 pre-order.");
+    }
+  }
 
   await prisma.emailSettings.upsert({
     where: { id: "default" },

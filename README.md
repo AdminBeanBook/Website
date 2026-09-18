@@ -8,7 +8,8 @@ A rebuild of [thebeanbook.org](https://thebeanbook.org) with **Stripe Checkout**
 |-------|-------------|
 | `/` | Homepage |
 | `/purchase` | Shop |
-| `/products/bean-book-2026-edition` | Product detail |
+| `/products/bean-book-2026-edition` | Product detail (2026 book) |
+| `/products/bean-book-2027-edition` | Product detail (2027 pre-order) |
 | `/map` | Coffee shop directory (searchable) |
 | `/learn-more` | Team |
 | `/contact` | Contact form |

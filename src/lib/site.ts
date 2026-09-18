@@ -22,6 +22,7 @@ export const IMAGES = {
     "https://thebeanbook.org/cdn/shop/files/pexels-artempodrez-6801175_1500x.jpg?v=1729018263",
   productCover:
     "https://thebeanbook.org/cdn/shop/files/tbbfrontcover_533x.png?v=1765760938",
+  productCover2027: "/images/bean-book-2027-cover.jpg",
   gallery: [
     "https://thebeanbook.org/cdn/shop/files/2O0A9213_f2372789-cebc-463d-8c0e-dba94160ae48_550x.jpg?v=1672969104",
     "https://thebeanbook.org/cdn/shop/files/IMG_20220206_101546_026_786cf954-7e88-43e5-80f0-7927b52d7d8d_550x.webp?v=1672969204",

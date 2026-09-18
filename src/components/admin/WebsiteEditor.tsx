@@ -21,6 +21,7 @@ import {
 } from "@/lib/pages/sections";
 import type { SiteConfig } from "@/lib/site-config";
 import { migrateSiteConfigButtons } from "@/lib/site-config";
+import type { CatalogProduct } from "@/lib/products/catalog";
 
 type AdminPage = {
   id: string;
@@ -83,6 +84,7 @@ type WebsiteEditorProps = {
   initialSiteConfig: SiteConfig;
   siteHasChanges: boolean;
   initialCoffeeShops: CoffeeShopRow[];
+  catalogProducts?: CatalogProduct[];
   mapEmbedUrl: string;
 };
 
@@ -91,6 +93,7 @@ export function WebsiteEditor({
   initialSiteConfig,
   siteHasChanges: initialSiteChanges,
   initialCoffeeShops,
+  catalogProducts,
   mapEmbedUrl,
 }: WebsiteEditorProps) {
   const router = useRouter();
@@ -565,6 +568,7 @@ export function WebsiteEditor({
             page={resolvedPage}
             sections={sections}
             shops={initialCoffeeShops}
+            catalogProducts={catalogProducts}
             mapEmbedUrl={mapEmbedUrl}
             selectedId={selection}
             onSelect={(id) => {

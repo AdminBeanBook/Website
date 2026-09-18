@@ -3,6 +3,7 @@ import { buildPageTextColorsContext } from "@/lib/pages/text-colors";
 import { listCoffeeShops } from "@/lib/coffee-shops";
 import { getGoogleMapEmbedUrl } from "@/lib/google-map";
 import { resolvePageSections } from "@/lib/pages/sections";
+import { listCatalogProducts } from "@/lib/products";
 import { getSiteConfig, type SiteConfigVariant } from "@/lib/site-config";
 import { PageSectionsView } from "@/components/pages/PageSectionsView";
 
@@ -26,9 +27,13 @@ export async function PageViewByTemplate({
     site,
   );
   const needsShops = sections.some((section) => section.type === "shop-directory");
-  const shops = needsShops
-    ? await listCoffeeShops({ activeOnly: true })
-    : [];
+  const needsCatalog = sections.some((section) => section.type === "product");
+  const [shops, catalogProducts] = await Promise.all([
+    needsShops ? listCoffeeShops({ activeOnly: true }) : Promise.resolve([]),
+    needsCatalog
+      ? listCatalogProducts(true)
+      : Promise.resolve([]),
+  ]);
 
   return (
     <PageSectionsView
@@ -36,6 +41,7 @@ export async function PageViewByTemplate({
       sections={sections}
       textColors={textColors}
       shops={shops}
+      catalogProducts={catalogProducts}
       mapEmbedUrl={getGoogleMapEmbedUrl()}
     />
   );

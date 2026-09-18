@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckoutSuccessTracker } from "@/components/analytics/CheckoutSuccessTracker";
+import { prisma } from "@/lib/db";
+import { isPreorderProduct } from "@/lib/products/catalog";
+import { resolveProduct } from "@/lib/products";
 import { captureServerError } from "@/lib/sentry/capture";
 import { syncOrderFromCheckoutSession } from "@/lib/sync-order";
 
@@ -16,10 +19,19 @@ export default async function CheckoutSuccessPage({
   searchParams,
 }: SuccessPageProps) {
   const { session_id: sessionId } = await searchParams;
+  let productId: string | undefined;
+  let preorder = false;
 
   if (sessionId) {
     try {
       await syncOrderFromCheckoutSession(sessionId);
+      const order = await prisma.order.findUnique({
+        where: { stripeSessionId: sessionId },
+        select: { productId: true },
+      });
+      const product = await resolveProduct(order?.productId);
+      productId = product.id;
+      preorder = isPreorderProduct(product);
     } catch (err) {
       captureServerError(err, {
         tags: { area: "checkout-success" },
@@ -30,14 +42,15 @@ export default async function CheckoutSuccessPage({
 
   return (
     <>
-      <CheckoutSuccessTracker sessionId={sessionId} />
+      <CheckoutSuccessTracker sessionId={sessionId} productId={productId} />
       <section className="flex min-h-[60vh] flex-col items-center justify-center bg-brand-beige px-6 py-20 text-center">
         <h1 className="text-3xl font-light tracking-wide text-brand-text md:text-4xl">
           Thanks for purchasing!
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-brand-text/80">
-          Your Bean Book order is confirmed. We&apos;ll email your receipt and
-          ship your passbook soon.
+          {preorder
+            ? "Your 2027 Bean Book pre-order is confirmed. We'll email your receipt and ship your passbook when the edition is released."
+            : "Your Bean Book order is confirmed. We'll email your receipt and ship your passbook soon."}
         </p>
         <Link href="/" className="btn-primary mt-10">
           Back to home

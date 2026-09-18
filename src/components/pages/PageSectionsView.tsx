@@ -18,6 +18,13 @@ import {
   type SectionBlock,
 } from "@/lib/pages/sections";
 import {
+  BEAN_BOOK_2026,
+  FALLBACK_CATALOG,
+  formatPriceLabel,
+  isPreorderProduct,
+  type CatalogProduct,
+} from "@/lib/products/catalog";
+import {
   colorStyle,
   type PageTextColorsContext,
 } from "@/lib/pages/text-colors";
@@ -28,6 +35,7 @@ type PageSectionsViewProps = {
   textColors: PageTextColorsContext;
   shops?: CoffeeShopRow[];
   mapEmbedUrl?: string | null;
+  catalogProducts?: CatalogProduct[];
   editMode?: boolean;
   selectedSectionId?: string | null;
   onSelectSection?: (id: string) => void;
@@ -253,70 +261,150 @@ function CtaSection({ section, textColors }: { section: PageSection; textColors:
   );
 }
 
+function ProductBuyCard({
+  productId,
+  title,
+  priceLabel,
+  image,
+  badge,
+  textColors,
+}: {
+  productId: string;
+  title: string;
+  priceLabel: string;
+  image: string;
+  badge?: string;
+  textColors: PageTextColorsContext;
+}) {
+  const { startCheckout, loading, error } = useCheckout(productId);
+
+  return (
+    <div className="mx-auto w-full max-w-xs text-center">
+      <button
+        type="button"
+        onClick={startCheckout}
+        disabled={loading}
+        aria-label={`Buy ${title}`}
+        className="group block w-full text-center disabled:cursor-wait disabled:opacity-80"
+      >
+        <div className="relative mx-auto aspect-[3/4] w-full overflow-hidden rounded-lg shadow-lg transition group-hover:shadow-xl group-disabled:group-hover:shadow-lg">
+          {badge ? (
+            <span className="absolute left-3 top-3 z-10 rounded-full bg-brand-accent px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+              {badge}
+            </span>
+          ) : null}
+          <Image
+            src={image}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="320px"
+            unoptimized={image.startsWith("/uploads/")}
+          />
+        </div>
+        <h2
+          className="mt-6 text-xl font-medium"
+          style={colorStyle("productTitle", textColors)}
+        >
+          {title}
+        </h2>
+        <p
+          className="mt-2 text-lg opacity-80"
+          style={colorStyle("productPrice", textColors)}
+        >
+          {priceLabel}
+        </p>
+        {loading && (
+          <p className="mt-3 text-sm opacity-70">Redirecting to checkout…</p>
+        )}
+      </button>
+      {error && (
+        <p className="mt-4 text-center text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ProductSection({
   section,
   textColors,
+  catalogProducts,
+  listedProductIds,
+  showCatalogExtras,
 }: {
   section: PageSection;
   textColors: PageTextColorsContext;
+  catalogProducts?: CatalogProduct[];
+  listedProductIds: string[];
+  showCatalogExtras: boolean;
 }) {
   const config = useSiteConfig();
-  const { startCheckout, loading, error } = useCheckout();
+  const sectionProductId =
+    asString(section.settings.productId) || BEAN_BOOK_2026.id;
   const image = asString(section.settings.image) || config.images.productCover;
-  const title = asString(section.settings.title, "Bean Book: 2026 Edition");
-  const priceLabel = asString(section.settings.priceLabel, "$25.00 USD");
+  const title = asString(section.settings.title, BEAN_BOOK_2026.name);
+  const priceLabel = asString(
+    section.settings.priceLabel,
+    formatPriceLabel(BEAN_BOOK_2026.priceCents),
+  );
   const finePrint = asString(section.settings.finePrint);
+  const extras = showCatalogExtras
+    ? (catalogProducts ?? FALLBACK_CATALOG).filter(
+        (product) =>
+          product.active !== false && !listedProductIds.includes(product.id),
+      )
+    : [];
+
+  const cards = [
+    {
+      productId: sectionProductId,
+      title,
+      priceLabel,
+      image,
+      badge: isPreorderProduct({ id: sectionProductId, name: title })
+        ? "Pre-order"
+        : undefined,
+    },
+    ...extras.map((product) => ({
+      productId: product.id,
+      title: product.name,
+      priceLabel: formatPriceLabel(product.priceCents),
+      image: product.imageUrl,
+      badge: isPreorderProduct(product) ? "Pre-order" : undefined,
+    })),
+  ];
 
   return (
     <section className="px-6 py-16">
-      <div className="mx-auto max-w-sm">
-        <button
-          type="button"
-          onClick={startCheckout}
-          disabled={loading}
-          aria-label={`Buy ${title}`}
-          className="group block w-full text-center disabled:cursor-wait disabled:opacity-80"
-        >
-          <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-lg bg-brand-cream shadow-lg transition group-hover:shadow-xl group-disabled:group-hover:shadow-lg">
-            <Image
-              src={image}
-              alt=""
-              fill
-              className="object-contain p-4"
-              sizes="320px"
-              unoptimized={image.startsWith("/uploads/")}
-            />
-          </div>
-          <h2
-            className="mt-6 text-xl font-medium"
-            style={colorStyle("productTitle", textColors)}
-          >
-            {title}
-          </h2>
-          <p
-            className="mt-2 text-lg opacity-80"
-            style={colorStyle("productPrice", textColors)}
-          >
-            {priceLabel}
-          </p>
-          {loading && (
-            <p className="mt-3 text-sm opacity-70">Redirecting to checkout…</p>
-          )}
-        </button>
-        {error && (
-          <p className="mt-4 text-center text-sm text-red-700" role="alert">
-            {error}
-          </p>
-        )}
-        {finePrint ? (
-          <p
-            className="mt-10 text-center text-xs opacity-60"
-            style={colorStyle("finePrint", textColors)}
-          >
-            {finePrint}
-          </p>
-        ) : null}
+      <div
+        className={
+          cards.length > 1
+            ? "mx-auto grid max-w-3xl gap-12 sm:grid-cols-2"
+            : "mx-auto max-w-sm"
+        }
+      >
+        {cards.map((card) => (
+          <ProductBuyCard
+            key={card.productId}
+            productId={card.productId}
+            title={card.title}
+            priceLabel={card.priceLabel}
+            image={card.image}
+            badge={card.badge}
+            textColors={textColors}
+          />
+        ))}
       </div>
+      {finePrint ? (
+        <p
+          className="mx-auto mt-10 max-w-md text-center text-xs opacity-60"
+          style={colorStyle("finePrint", textColors)}
+        >
+          {finePrint}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -429,8 +517,21 @@ function renderSectionBody(
       return <GallerySection section={section} />;
     case "cta":
       return <CtaSection section={section} textColors={props.textColors} />;
-    case "product":
-      return <ProductSection section={section} textColors={props.textColors} />;
+    case "product": {
+      const productSections = props.sections.filter((row) => row.type === "product");
+      const listedProductIds = productSections.map(
+        (row) => asString(row.settings.productId) || BEAN_BOOK_2026.id,
+      );
+      return (
+        <ProductSection
+          section={section}
+          textColors={props.textColors}
+          catalogProducts={props.catalogProducts}
+          listedProductIds={listedProductIds}
+          showCatalogExtras={section.id === productSections[0]?.id}
+        />
+      );
+    }
     case "contact-form":
       return (
         <section className="px-6 py-16">

@@ -9,6 +9,7 @@ import type { CoffeeShopRow } from "@/lib/coffee-shops";
 import type { ResolvedPageContent } from "@/lib/pages";
 import type { PageSection } from "@/lib/pages/sections";
 import { buildPageTextColorsContext } from "@/lib/pages/text-colors";
+import type { CatalogProduct } from "@/lib/products/catalog";
 import type { SiteConfig } from "@/lib/site-config";
 
 type EditorCanvasProps = {
@@ -17,6 +18,7 @@ type EditorCanvasProps = {
   sections: PageSection[];
   shops: CoffeeShopRow[];
   mapEmbedUrl: string;
+  catalogProducts?: CatalogProduct[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 };
@@ -27,6 +29,7 @@ export function EditorCanvas({
   sections,
   shops,
   mapEmbedUrl,
+  catalogProducts,
   selectedId,
   onSelect,
 }: EditorCanvasProps) {
@@ -77,6 +80,7 @@ export function EditorCanvas({
             textColors={textColors}
             shops={shops}
             mapEmbedUrl={mapEmbedUrl}
+            catalogProducts={catalogProducts}
             editMode
             selectedSectionId={selectedId}
             onSelectSection={onSelect}

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { BEAN_BOOK_2026, slugifyProductId } from "@/lib/products";
+import { FALLBACK_CATALOG, slugifyProductId } from "@/lib/products";
 
 export { slugifyProductId };
 
@@ -55,17 +55,18 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
 }
 
 export async function seedDefaultProductIfEmpty() {
-  const count = await prisma.product.count();
-  if (count > 0) return;
-
-  await prisma.product.create({
-    data: {
-      id: BEAN_BOOK_2026.id,
-      name: BEAN_BOOK_2026.name,
-      description: BEAN_BOOK_2026.description,
-      priceCents: BEAN_BOOK_2026.priceCents,
-      imageUrl: BEAN_BOOK_2026.imageUrl,
-      active: true,
-    },
-  });
+  for (const product of FALLBACK_CATALOG) {
+    await prisma.product.upsert({
+      where: { id: product.id },
+      create: {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        priceCents: product.priceCents,
+        imageUrl: product.imageUrl,
+        active: true,
+      },
+      update: {},
+    });
+  }
 }

@@ -1,5 +1,5 @@
 import type { Order } from "@prisma/client";
-import { BEAN_BOOK_2026 } from "@/lib/products";
+import { BEAN_BOOK_2026 } from "@/lib/products/catalog";
 import { getShipFromAddress } from "@/lib/shipping/config";
 import {
   isComplimentaryOrder,
@@ -15,8 +15,9 @@ export function formatOrderNumber(sequence: number): string {
 
 export function getLineItemQuantity(
   order: Pick<Order, "amountCents"> & { discountCents?: number | null },
+  unitPriceCents = BEAN_BOOK_2026.priceCents,
 ): number {
-  const unit = BEAN_BOOK_2026.priceCents;
+  const unit = unitPriceCents > 0 ? unitPriceCents : BEAN_BOOK_2026.priceCents;
   if (unit <= 0) return 1;
   const basis =
     order.amountCents > 0 ? order.amountCents : (order.discountCents ?? 0);
@@ -98,9 +99,10 @@ export type OrderAmountBreakdown = {
 
 export function getOrderAmountBreakdown(
   order: Pick<Order, "amountCents" | "discountCents">,
+  unitPriceCents = BEAN_BOOK_2026.priceCents,
 ): OrderAmountBreakdown {
-  const quantity = getLineItemQuantity(order);
-  const subtotalCents = BEAN_BOOK_2026.priceCents * quantity;
+  const quantity = getLineItemQuantity(order, unitPriceCents);
+  const subtotalCents = unitPriceCents * quantity;
   const discountCents = order.discountCents ?? 0;
   const afterDiscount = Math.max(0, subtotalCents - discountCents);
   const shippingAndFeesCents = Math.max(0, order.amountCents - afterDiscount);

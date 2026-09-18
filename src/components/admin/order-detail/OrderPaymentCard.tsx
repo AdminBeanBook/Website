@@ -5,15 +5,16 @@ import {
   getOrderAmountBreakdown,
   getPaymentBadge,
 } from "@/lib/orders/display";
-import { BEAN_BOOK_2026 } from "@/lib/products";
+import type { CatalogProduct } from "@/lib/products/catalog";
 
 type OrderPaymentCardProps = {
   order: Pick<Order, "amountCents" | "discountCents" | "discountCode" | "status" | "stripeSessionId">;
+  product: CatalogProduct;
 };
 
-export function OrderPaymentCard({ order }: OrderPaymentCardProps) {
+export function OrderPaymentCard({ order, product }: OrderPaymentCardProps) {
   const payment = getPaymentBadge(order);
-  const breakdown = getOrderAmountBreakdown(order);
+  const breakdown = getOrderAmountBreakdown(order, product.priceCents);
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -69,7 +70,7 @@ export function OrderPaymentCard({ order }: OrderPaymentCardProps) {
         </span>
       </div>
       <p className="border-t border-gray-50 px-5 py-2 text-xs text-gray-400">
-        {BEAN_BOOK_2026.name}
+        {product.name}
       </p>
     </section>
   );

@@ -5,13 +5,15 @@ import { useCheckout } from "@/hooks/useCheckout";
 type BuyButtonProps = {
   label?: string;
   className?: string;
+  productId?: string;
 };
 
 export function BuyButton({
   label = "Buy Now",
   className = "btn-primary",
+  productId,
 }: BuyButtonProps) {
-  const { startCheckout, loading, error } = useCheckout();
+  const { startCheckout, loading, error } = useCheckout(productId);
 
   return (
     <div className="inline-flex w-full max-w-xs flex-col items-center gap-3">

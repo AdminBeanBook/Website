@@ -287,6 +287,7 @@ export function defaultSectionSettings(
         priceLabel: "$25.00 USD",
         finePrint: "Secure checkout powered by Stripe. US shipping address required.",
         image: "",
+        productId: "bean-book-2026-edition",
       };
     case "contact-form":
       return {};
@@ -508,6 +509,7 @@ export function hydratePageSections(
           finePrint:
             "Secure checkout powered by Stripe. US shipping address required.",
           image: config.images.productCover,
+          productId: "bean-book-2026-edition",
         },
       },
     ];

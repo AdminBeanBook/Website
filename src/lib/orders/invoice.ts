@@ -2,7 +2,7 @@ import type { Order } from "@prisma/client";
 import { contactTaxExemptForEmail } from "@/lib/contacts/tax-exempt";
 import { prisma } from "@/lib/db";
 import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
-import { BEAN_BOOK_2026 } from "@/lib/products";
+import { BEAN_BOOK_2026, resolveProduct } from "@/lib/products";
 import { getStripe } from "@/lib/stripe";
 import { isComplimentaryOrder, isUnpaid, normalizeOrderStatus } from "@/lib/orders/status";
 
@@ -31,13 +31,14 @@ async function getOrCreateStripeCustomer(
   });
 }
 
-function invoiceDescription(order: Order): string {
+async function invoiceDescription(order: Order): Promise<string> {
+  const product = await resolveProduct(order.productId);
   const books =
-    order.amountCents % BEAN_BOOK_2026.priceCents === 0
-      ? order.amountCents / BEAN_BOOK_2026.priceCents
+    product.priceCents > 0 && order.amountCents % product.priceCents === 0
+      ? order.amountCents / product.priceCents
       : null;
   const qty = books && books > 1 ? ` (${books} books)` : "";
-  return `${BEAN_BOOK_2026.name}${qty}`;
+  return `${product.name}${qty}`;
 }
 
 export type InvoicePreview = {
@@ -177,7 +178,7 @@ export async function prepareStripeInvoiceForOrder(orderId: string) {
       customer: customer.id,
       amount: order.amountCents,
       currency: "usd",
-      description: invoiceDescription(order),
+      description: await invoiceDescription(order),
       tax_behavior: "exclusive",
     },
     { idempotencyKey: `bb-invoice-item-${orderId}` },

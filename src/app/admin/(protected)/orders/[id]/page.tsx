@@ -32,6 +32,7 @@ import {
   shouldShowShippingPanel,
   tabLabel,
 } from "@/lib/orders/status";
+import { resolveProduct } from "@/lib/products";
 
 type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -66,11 +67,13 @@ export default async function AdminOrderDetailPage({
     sequence,
     adjacent,
     customerOrderCount,
+    product,
   ] = await Promise.all([
     listPackagePresets(),
     getOrderDisplaySequence(order.id, order.createdAt),
     getAdjacentOrderIds(order.createdAt, order.id),
     getCustomerOrderCount(order.customerId, order.customerEmail),
+    resolveProduct(order.productId),
   ]);
 
   const shippoConfigured = isShippoConfigured();
@@ -144,6 +147,7 @@ export default async function AdminOrderDetailPage({
         <div className="space-y-4">
           <OrderFulfillmentCard
             order={order}
+            product={product}
             showShipping={shouldShowShippingPanel(order)}
             hasShipTo={orderHasShipToAddress(order)}
             shippoConfigured={shippoConfigured}
@@ -151,7 +155,7 @@ export default async function AdminOrderDetailPage({
             packages={packages}
             defaultPackageId={defaultPackageId}
           />
-          <OrderPaymentCard order={order} />
+          <OrderPaymentCard order={order} product={product} />
         </div>
 
         <OrderCustomerSidebar

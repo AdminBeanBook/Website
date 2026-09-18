@@ -1,32 +1,59 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { BEAN_BOOK_2026 } from "@/lib/products";
+import { BEAN_BOOK_2026, getProductById, resolveProduct } from "@/lib/products";
 import { captureServerError } from "@/lib/sentry/capture";
 import { getSiteOriginFromRequest, getStripe } from "@/lib/stripe";
 
 /** Stripe Tax code: physical books / printed materials. */
 const BOOK_TAX_CODE = "txcd_35010000";
 
+async function productIdFromRequest(request: Request): Promise<string | null> {
+  try {
+    const body = (await request.json()) as { productId?: unknown };
+    return typeof body.productId === "string" && body.productId.trim()
+      ? body.productId.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const stripe = getStripe();
     const origin = getSiteOriginFromRequest(request);
     const shippingCents = Number(process.env.SHIPPING_AMOUNT_CENTS ?? "0");
+    const requestedId = await productIdFromRequest(request);
+
+    const product = requestedId
+      ? await getProductById(requestedId)
+      : await resolveProduct();
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    const useFixedPrice =
+      Boolean(process.env.STRIPE_PRICE_ID) && product.id === BEAN_BOOK_2026.id;
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      process.env.STRIPE_PRICE_ID
-        ? [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }]
+      useFixedPrice
+        ? [{ price: process.env.STRIPE_PRICE_ID as string, quantity: 1 }]
         : [
             {
               quantity: 1,
               price_data: {
-                currency: BEAN_BOOK_2026.currency,
-                unit_amount: BEAN_BOOK_2026.priceCents,
+                currency: product.currency,
+                unit_amount: product.priceCents,
                 tax_behavior: "exclusive",
                 product_data: {
-                  name: BEAN_BOOK_2026.name,
-                  description: BEAN_BOOK_2026.description,
-                  images: [BEAN_BOOK_2026.imageUrl],
+                  name: product.name,
+                  description: product.description,
+                  images: [
+                    product.imageUrl.startsWith("http")
+                      ? product.imageUrl
+                      : `${origin}${product.imageUrl}`,
+                  ],
                   tax_code: BOOK_TAX_CODE,
                 },
               },
@@ -47,7 +74,7 @@ export async function POST(request: Request) {
         enabled: true,
       },
       metadata: {
-        product_id: BEAN_BOOK_2026.id,
+        product_id: product.id,
       },
     };
 

@@ -41,7 +41,7 @@ export const PAGE_DEFAULTS: PageDefault[] = [
     sortOrder: 1,
     title: "Order your Book Today!",
     subtitle:
-      "The Bean Book: 2026 Edition is officially up for sale! Click on the book below to order yours today!",
+      "The 2026 Edition is on sale, and the 2027 Edition is available for pre-order. Click a book below to order.",
     body: "",
   },
   {

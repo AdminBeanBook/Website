@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDraftTopBar } from "@/components/admin/draft/AdminDraftTopBar";
 import { DraftSidebarCard } from "@/components/admin/draft/DraftSidebarCard";
-import { BEAN_BOOK_2026, slugifyProductId } from "@/lib/products";
+import { BEAN_BOOK_2026, slugifyProductId } from "@/lib/products/catalog";
 
 const FORM_ID = "create-product-form";
 
