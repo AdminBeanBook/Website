@@ -3,6 +3,7 @@ import { upsertContactFromCustomer } from "@/lib/contacts/from-customer";
 import { prisma } from "@/lib/db";
 import { incrementDiscountUsage } from "@/lib/discounts";
 import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
+import { maybeAutoBuyLabelForOrder } from "@/lib/shipping/auto-buy";
 import { getStripe } from "@/lib/stripe";
 
 function extractPromotionCode(
@@ -101,6 +102,8 @@ export async function saveOrderFromStripeSession(
   }
 
   void notifyNewOrderEmail(order);
+
+  await maybeAutoBuyLabelForOrder(order.id);
 
   return order;
 }

@@ -24,7 +24,7 @@ export function PackageManager({
   const [lengthIn, setLengthIn] = useState(10);
   const [widthIn, setWidthIn] = useState(8);
   const [heightIn, setHeightIn] = useState(1);
-  const [weightOz, setWeightOz] = useState(13);
+  const [weightOz, setWeightOz] = useState(2);
   const [makeDefault, setMakeDefault] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

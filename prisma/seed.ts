@@ -54,7 +54,7 @@ async function main() {
         lengthIn: Number(process.env.PACKAGE_LENGTH_IN ?? 10),
         widthIn: Number(process.env.PACKAGE_WIDTH_IN ?? 8),
         heightIn: Number(process.env.PACKAGE_HEIGHT_IN ?? 1),
-        weightOz: Number(process.env.PACKAGE_WEIGHT_OZ ?? 13),
+        weightOz: Number(process.env.PACKAGE_WEIGHT_OZ ?? 2),
         isDefault: count === 0,
       },
     });

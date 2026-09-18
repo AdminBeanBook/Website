@@ -3,6 +3,7 @@ import { contactTaxExemptForEmail } from "@/lib/contacts/tax-exempt";
 import { prisma } from "@/lib/db";
 import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
 import { BEAN_BOOK_2026, resolveProduct } from "@/lib/products";
+import { maybeAutoBuyLabelForOrder } from "@/lib/shipping/auto-buy";
 import { getStripe } from "@/lib/stripe";
 import { isComplimentaryOrder, isUnpaid, normalizeOrderStatus } from "@/lib/orders/status";
 
@@ -368,6 +369,8 @@ export async function markOrderPaidFromInvoice(
   });
 
   void notifyNewOrderEmail(updated);
+
+  await maybeAutoBuyLabelForOrder(updated.id);
 
   return updated;
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendStripeInvoiceForOrder } from "@/lib/orders/invoice";
 import { notifyNewOrderEmail } from "@/lib/notifications/order-email";
 import { resolveProduct } from "@/lib/products";
+import { maybeAutoBuyLabelForOrder } from "@/lib/shipping/auto-buy";
 
 export type CreateManualOrderInput = {
   productId?: string;
@@ -124,6 +125,7 @@ export async function createManualOrder(input: CreateManualOrderInput) {
 
   if (complimentary) {
     void notifyNewOrderEmail(order);
+    await maybeAutoBuyLabelForOrder(order.id);
     return order;
   }
 

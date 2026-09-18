@@ -2,21 +2,24 @@
 
 Unattended 4×6 thermal label printing using a secondary Mac as a print server (broken screen is fine).
 
-**Status:** Print queue API + Mac agent script are in the repo. Auto-buy-on-payment is still manual (buy the label in Admin; the Mac prints it).
+**Status:** Print queue API + Mac agent + **auto-buy on payment** are in the repo.
 
 ---
 
 ## How it works
 
-1. You buy a Shippo label in Admin → Orders (as today).
-2. The order enters the **print queue** (`labelUrl` set, `labelPrintedAt` null).
-3. The secondary Mac runs `scripts/print-agent/print-agent.sh`, which every minute:
+1. Customer pays (online checkout or invoice) — or you create a complimentary order with an address.
+2. The site **auto-buys** a Shippo label (USPS Ground Advantage when available, else cheapest).
+3. The order enters the **print queue** (`labelUrl` set, `labelPrintedAt` null).
+4. The secondary Mac runs `scripts/print-agent/print-agent.sh`, which every minute:
    - Asks `GET /api/print-agent/queue` for unprinted labels
    - Downloads the label PDF (or ZPL)
    - Prints via CUPS (`lp`)
    - Marks printed with `POST /api/print-agent/queue/:orderId/printed`
 
-2027 pre-orders are **excluded** from the queue until you choose to fulfill them.
+2027 pre-orders are **excluded** from auto-buy and the print queue until you choose to fulfill them.
+
+Disable auto-buy with Vercel env `AUTO_BUY_SHIPPING_LABELS=0`.
 
 ---
 
@@ -168,6 +171,5 @@ Auth: `Authorization: Bearer <PRINT_AGENT_SECRET>`
 
 ## Still optional / later
 
-- Auto-buy Shippo label when an order becomes paid
 - Prefer `SHIPPO_LABEL_FILE_TYPE=ZPLII` for raw thermal (set in Vercel if your printer prefers ZPL)
 - Admin UI badge “Printed”
