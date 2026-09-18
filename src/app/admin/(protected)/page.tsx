@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
             className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:border-brand-green/30"
           >
             <p className="text-sm text-gray-500">{label}</p>
-            <p className="mt-1 text-3xl font-semibold text-brand-green">{value}</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums text-gray-900">{value}</p>
           </Link>
         ))}
       </div>

@@ -152,16 +152,28 @@
 }
 
 .bb-admin-dark .text-gray-600 {
-  color: #9ca3af;
+  color: #c4c9d4;
 }
 
 .bb-admin-dark .text-gray-500 {
-  color: #9ca3af;
+  color: #c4c9d4;
 }
 
 .bb-admin-dark .text-gray-400,
 .bb-admin-dark .text-gray-300 {
-  color: #6b7280;
+  color: #9ca3af;
+}
+
+.bb-admin-dark .text-brand-green {
+  color: #9dce9a;
+}
+
+.bb-admin-dark .hover\:text-brand-green:hover {
+  color: #b7e3b3;
+}
+
+.bb-admin-dark a.text-brand-green {
+  color: #9dce9a;
 }
 
 .bb-admin-dark .shadow-sm,
