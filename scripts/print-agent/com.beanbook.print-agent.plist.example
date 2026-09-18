@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Install on the print Mac:
+    1. Copy scripts/print-agent/ to ~/beanbook-print-agent/
+    2. Create ~/beanbook-print-agent/.env (see .env.example)
+    3. chmod +x ~/beanbook-print-agent/print-agent.sh
+    4. Edit this plist: replace YOUR_USERNAME and paths
+    5. cp com.beanbook.print-agent.plist ~/Library/LaunchAgents/
+    6. launchctl load ~/Library/LaunchAgents/com.beanbook.print-agent.plist
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.beanbook.print-agent</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/YOUR_USERNAME/beanbook-print-agent/print-agent.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USERNAME/beanbook-print-agent</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/beanbook-print-agent.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/beanbook-print-agent.stderr.log</string>
+  </dict>
+</plist>

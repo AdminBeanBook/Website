@@ -173,6 +173,8 @@ model Order {
   trackingNumber     String?
   labelUrl           String?
   labelCostCents     Int?
+  /** Set when the Mac print agent successfully prints the label. */
+  labelPrintedAt     DateTime?
   shippedAt          DateTime?
   notes           String?
   createdAt       DateTime @default(now())
